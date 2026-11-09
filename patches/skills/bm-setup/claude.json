@@ -1,18 +1,53 @@
 {
+  "source_blob_sha": "b9b234678d2d5fa6743cb39d51d6355942c71614",
   "replacements": [
     {
-      "old": "## Prerequisite check\n\nFirst confirm the **Basic Memory MCP server is connected** — call\n`bm_project(command=\"list\")`. If that tool isn't available or errors, Basic Memory isn't\nwired into Claude Code yet. **Stop and walk the user through it first** (everything\nbelow depends on it):\n\n1. Install it: `uv tool install basic-memory --prerelease=allow` (or\n   `pip install basic-memory`), a version exposing the 1.0 `bm_*` tools. Keep `--prerelease=allow`\n   with uv: published releases pin a FastMCP pre-release, and without the flag uv\n   silently installs an older Basic Memory release.\n2. Connect it: `claude mcp add basic-memory -- uvx --prerelease=allow basic-memory mcp`,\n   then restart the session so the MCP server loads.\n\nRe-check `bm_project(command=\"list\")` before continuing — don't start the interview until\nit succeeds.\n\n",
-      "new": "## Prerequisite check\n\nBasic Memory is **remote**, preconfigured at `https://bm.xlap.pl/mcp`. Before setup call `bm_project(command=\"list\")` through the **plugin MCP server**. If unavailable, report the connector or OAuth problem and stop; **do not install** Basic Memory, start `uvx`, modify MCP definitions, or choose another connector. Ask for the explicit primary project; never infer one from a default or filesystem path.\n\n"
+      "old": "First confirm the **Basic Memory MCP server is connected** — call\n`bm_project(command=\"list\")`. If that tool isn't available or errors, Basic Memory isn't\nwired into Claude Code yet. **Stop and walk the user through it first** (everything\nbelow depends on it):\n\n1. Install it: `uv tool install basic-memory --prerelease=allow` (or\n   `pip install basic-memory`), a version exposing the 1.0 `bm_*` tools. Keep `--prerelease=allow`\n   with uv: published releases pin a FastMCP pre-release, and without the flag uv\n   silently installs an older Basic Memory release.\n2. Connect it: `claude mcp add basic-memory -- uvx --prerelease=allow basic-memory mcp`,\n   then restart the session so the MCP server loads.\n\nRe-check `bm_project(command=\"list\")` before continuing — don't start the interview until\nit succeeds.\n\n",
+      "new": "Basic Memory runs on a **self-hosted remote server** (NAS) reached through the\nplugin's MCP connection. Call `bm_project(command=\"list\")`. If the tool is missing or\nerrors, report the connector or OAuth problem and stop. Do **not** install Basic\nMemory locally, start `uvx`, or add another MCP server: this build has no local\nCLI by design.\n\n"
+    },
+    {
+      "old": "6. **Lifecycle-event capture.** \"The plugin keeps a local trail of SessionStart\n   and PreCompact events for diagnostics by default. Keep that on?\" Default to\n   **on**. Explain that the normal session brief and PreCompact checkpoint work\n   either way; capture adds bounded lifecycle metadata to a local inbox until\n   `bm hook flush` archives it locally. It never creates knowledge-graph notes.\n   Persist the JSON boolean `false` only when the user opts out.\n   - Capture stays local and personal. It never writes directly to team projects.\n\n",
+      "new": "6. **Lifecycle-event capture.** Not available in this build: upstream records it\n   through the local CLI, which a remote NAS setup doesn't have. Skip the question\n   and omit `captureEvents`.\n\n"
+    },
+    {
+      "old": "(just the session brief, the PreCompact\n   checkpoint, and `/basic-memory:bm-remember` on demand)",
+      "new": "(just the session brief, plus\n   `/basic-memory:bm-remember` and `/basic-memory:bm-checkpoint` on demand)"
+    },
+    {
+      "old": "8. **Shared skills** (optional, default yes). \"Want the full Basic Memory toolkit —\n   the shared `memory-*` skills (`memory-notes`, `memory-tasks`, `memory-research`,\n   `memory-schema`, `memory-defrag`, …)? I can install them alongside this plugin.\"\n   These are the canonical, framework-agnostic skills (the same set OpenClaw bundles).\n   This plugin ships only the Claude-Code-specific glue and pulls the shared set on\n   demand — it doesn't vendor its own copies. (See \"Install the shared skills\" below.)\n\n",
+      "new": "8. **Extra skills** (optional, default no). \"Want the optional `memory-*` toolkit\n   (`memory-notes`, `memory-tasks`, `memory-schema`, `memory-defrag`, …)?\" In this\n   build they ship as a separate plugin, `basic-memory-nas-extras`, in the same\n   marketplace, so the core stays as lean as upstream. (See \"Optional extras\" below.)\n\n"
+    },
+    {
+      "old": "These schemas cover notes the Claude integration writes directly. Lifecycle\nenvelopes are not notes: `bm hook flush` archives that operational trace locally,\nso there is no projected session or tool-ledger schema to seed.\n\n",
+      "new": "These schemas cover notes the Claude integration writes directly.\n\n"
     },
     {
       "old": "### 2. Install the shared skills (if the user opted in)\n**First, guard against clobbering a source checkout.** If `./skills` already exists,\nis tracked in git, and holds `memory-*` directories, you're inside the skills' own\nsource repo (e.g. `basic-memory` itself) — the install would overwrite the working\ncopy with published versions. In that case **skip the install** and tell the user\nthe skills are already present as source; don't run the command. Quick check:\n\n```\ngit ls-files skills/ | grep -q memory- && echo \"source repo - skip install\"\n```\n\nOtherwise, run:\n\n```\nnpx skills add basicmachines-co/basic-memory/skills -g\n```\n\n`-g` installs the canonical `memory-*` skills at user level (`~/.claude/skills/`),\nso every project gets them — the single source of truth, shared with OpenClaw. The plugin does **not** vendor copies;\nit relies on this shared set. If `npx` / the `skills` CLI isn't available, point the\nuser at the manual install in the top-level [`skills/README.md`](../../../../skills/README.md).\n\n",
-      "new": "### 2. Confirm bundled skills\n\nThe distributed `basic-memory-nas` plugin already bundles the supported `memory-*` skills. Confirm their presence in this plugin, report any missing skill, and stop if the package is incomplete. Do **not** install or copy skills into a user/global directory, do not invoke a package manager, and do not introduce duplicate plugin instances.\n\n"
+      "new": "### 2. Optional extras (if the user opted in)\nTell the user to install `basic-memory-nas-extras` from the same plugin\nmarketplace as this plugin. Do not run `npx`, copy skills into `~/.claude/skills`,\nor install the official cloud plugin: one copy of each skill per surface.\n\n"
+    },
+    {
+      "old": "    \"preCompactCapture\": \"extractive\",\n",
+      "new": ""
+    },
+    {
+      "old": "    \"captureEvents\": true,\n",
+      "new": ""
+    },
+    {
+      "old": "valid JSON. Always persist `captureEvents` as a JSON boolean.",
+      "new": "valid JSON."
     },
     {
       "old": "### 4. Smoke-test the wiring\nBefore you close, prove recall actually resolves — this catches a misnamed project,\nmissing cloud credentials, or a ref that doesn't route, while the user is still here\nto fix it. Use the CLI the hook uses (`basic-memory` / `bm` /\n`uvx --prerelease=allow basic-memory`). `--project` takes a project name,\n`workspace/project`, or a project id.\n\n- **Primary:** run the open-decision query the SessionStart hook runs against\n  `primaryProject`:\n  `… tool search --note-types decision --filters '{\"status\": \"open\"}' --page-size 5 --project <primaryProject>`.\n  It just needs to return *cleanly* — `0 results` is fine; an **error** means the\n  ref doesn't route.\n- **Seeded schemas:** `… tool search --note-types schema --page-size 10 --project <primaryProject>`\n  should return the schemas you just seeded. For a coding setup, confirm the\n  `Coding Session` schema is present.\n- **One shared project** (only if `secondaryProjects` is non-empty): the same\n  open-decision query with `--project <first ref>`. Again `0 results` is fine; an\n  **error** means the ref doesn't route.\n- **Hook health:** run\n  `basic-memory hook status --harness claude --project-dir <project-root>` with\n  the first available `basic-memory`, `bm`, or `uvx --prerelease=allow basic-memory` launcher. It\n  must find the intended settings and report the selected project and capture\n  state. Record the shared inbox depth and last-flush state in the setup summary;\n  the counts include envelopes from every supported harness.\n\nIf a query errors, or the primary returns nothing, surface it and fix the project\nref before closing — don't let the next session's brief come up empty.\n\n",
-      "new": "### 4. Smoke-test through MCP\n\nCall `bm_project(command=\"list\")` and a **project-scoped** `bm_search` for open decisions and schemas. If reads fail or the selected project is missing, stop and report the exact error. Do not run Basic Memory CLI on the client; CLI administration runs only in the authorized NAS container. Hook health is **not verified** until the separately reviewed T05 hook implementation passes its event and checkpoint tests; report this explicitly. Do not claim setup completed by observing configuration alone.\n\n"
+      "new": "### 4. Smoke-test the wiring\nBefore you close, prove recall resolves through MCP — this catches a misnamed\nproject or a ref that doesn't route while the user is still here to fix it.\n\n- **Primary:** `bm_search` with `filters={\"type\": \"decision\", \"status\": \"open\"}`,\n  `page_size` 5, `project=<primaryProject>`. `0 results` is fine; an **error** means\n  the ref doesn't route.\n- **Seeded schemas:** `bm_search` with `filters={\"type\": \"schema\"}` in the same\n  project should return the schemas you just seeded. For a coding setup, confirm\n  the `Coding Session` schema is present.\n- **One shared project** (only if `secondaryProjects` is non-empty): the same\n  open-decision query against the first ref.\n\nIf a query errors, surface it and fix the project ref before closing.\n\n"
+    },
+    {
+      "old": "result, whether lifecycle-event capture is enabled, the shared hook inbox/flush\nstate, and whether the output style is on.",
+      "new": "result, and whether the output style is on."
+    },
+    {
+      "old": "recall is already live this session (the SessionStart\n  hook's prompt ran), and the PreCompact checkpoint works now too — only the\n  proactive-capture reflexes wait for the restart.",
+      "new": "the session brief picks up the new settings at the\n  next start too, and `/basic-memory:bm-checkpoint` works now — only the\n  proactive-capture reflexes wait for the restart."
     }
-  ],
-  "verified_against_upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5",
-  "source_blob_sha": "b9b234678d2d5fa6743cb39d51d6355942c71614"
+  ]
 }

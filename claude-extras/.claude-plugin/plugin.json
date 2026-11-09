@@ -1,0 +1,10 @@
+{
+  "author": {
+    "name": "elconcept"
+  },
+  "description": "Optional Basic Memory memory-* skill library; requires basic-memory-nas",
+  "license": "AGPL-3.0-or-later",
+  "name": "basic-memory-nas-extras",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "2.0.0"
+}

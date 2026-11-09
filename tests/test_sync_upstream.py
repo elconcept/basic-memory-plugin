@@ -64,14 +64,14 @@ class SyncUpstreamTests(unittest.TestCase):
     def test_build_config_version_bumps_once_per_new_upstream(self):
         config = self.root / "config" / "build.json"
         config.parent.mkdir(parents=True, exist_ok=True)
-        config.write_text(json.dumps({"upstream_sha": SHA1, "version": "1.0.0", "plugin_name": "basic-memory-nas"}))
+        config.write_text(json.dumps({"upstream_sha": SHA1, "version": "2.0.0", "plugin_name": "basic-memory-nas"}))
         synchronize(self.source, self.dest, self.lock, SHA1, self.report, config)
-        self.assertEqual(json.loads(config.read_text())["version"], "1.0.0")
+        self.assertEqual(json.loads(config.read_text())["version"], "2.0.0")
         synchronize(self.source, self.dest, self.lock, SHA2, self.report, config)
-        self.assertEqual(json.loads(config.read_text())["version"], "1.0.1")
+        self.assertEqual(json.loads(config.read_text())["version"], "2.0.1")
         self.assertEqual(json.loads(config.read_text())["upstream_sha"], SHA2)
         synchronize(self.source, self.dest, self.lock, SHA2, self.report, config)
-        self.assertEqual(json.loads(config.read_text())["version"], "1.0.1")
+        self.assertEqual(json.loads(config.read_text())["version"], "2.0.1")
 
     def test_invalid_version_rejected_before_writes(self):
         config = self.root / "build.json"

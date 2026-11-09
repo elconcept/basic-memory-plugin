@@ -16,7 +16,7 @@ This deployment runs one Basic Memory 1.0.0 server on Synology. The Basic Memory
 
 ## Run It (only inside the authorized NAS container)
 
-Use the admin connection to execute the following **inside `/basic-memory-server`**, never on the MacBook or HolyClaude client:
+Use the admin connection to execute the following **inside `/basic-memory-server`**, never on a client machine:
 
 ```bash
 /app/.venv/bin/basic-memory doctor --skip-self-test --json

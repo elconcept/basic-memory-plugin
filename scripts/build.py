@@ -2,8 +2,9 @@
 """Build reviewable, credential-free Basic Memory plugin candidates.
 
 This is a packaging tool, not a Basic Memory fork. It never executes imported
-upstream source and never accesses the NAS. Host-specific hooks and OAuth are
-intentionally separate, gated tasks.
+upstream source and never accesses the NAS. Each host gets two packages:
+<host> mirrors the upstream native plugin (bm-* skills, schemas, output style)
+plus the NAS MCP connection; <host>-extras carries the optional memory-* library.
 """
 from __future__ import annotations
 
@@ -54,6 +55,13 @@ def frontmatter(text: str, name: str) -> None:
         raise ValueError(f"Missing description: {name}")
 
 
+def normalize_namespace(text: str) -> str:
+    """Point upstream plugin skill references at this plugin's namespace."""
+    text = text.replace("/basic-memory:", "/basic-memory-nas:")
+    text = text.replace("basic-memory:bm-", "basic-memory-nas:bm-")
+    return text.replace("codex:bm-", "basic-memory-nas:bm-")
+
+
 def skill_dirs(root: Path, prefix: str) -> list[Path]:
     if not root.is_dir():
         raise ValueError(f"Missing upstream root: {root}")
@@ -100,9 +108,7 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
                     if not old or text.count(old) != 1:
                         raise ValueError(f"Upstream patch anchor changed: {name} / {old[:60]!r}")
                     text = text.replace(old, new, 1)
-            text = text.replace("/basic-memory:", "/basic-memory-nas:")
-            text = text.replace("basic-memory:bm-", "basic-memory-nas:bm-")
-            text = text.replace("codex:bm-", "basic-memory-nas:bm-")
+            text = normalize_namespace(text)
             data = text.encode("utf-8")
         files[rel] = data
     if "SKILL.md" not in files:
@@ -117,108 +123,142 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
     return files
 
 
-def select_skills(upstream: Path, overrides: Path, target: str) -> dict[str, bytes]:
+CORE_COUNT = 8
+EXTRAS_COUNT = 16
+
+
+def select_skills(upstream: Path, overrides: Path, target: str, kind: str = "core") -> dict[str, bytes]:
+    """core = the host's native bm-* plugin skills (upstream parity);
+    extras = the optional shared memory-* library, shipped as a separate plugin."""
     if target not in {"claude", "openai"}:
         raise ValueError(f"Unknown target: {target}")
-    native_root = upstream / ("plugins/claude-code/skills" if target == "claude" else "plugins/codex/skills")
-    roots = [(upstream / "skills", "memory-"), (native_root, "bm-")]
+    if kind == "core":
+        root = upstream / ("plugins/claude-code/skills" if target == "claude" else "plugins/codex/skills")
+        prefix, expected = "bm-", CORE_COUNT
+    elif kind == "extras":
+        root, prefix, expected = upstream / "skills", "memory-", EXTRAS_COUNT
+    else:
+        raise ValueError(f"Unknown package kind: {kind}")
     files: dict[str, bytes] = {}
     count = 0
-    for root, prefix in roots:
-        for skill in skill_dirs(root, prefix):
-            if skill.name in EXCLUDED:
-                continue
-            name = skill.name
-            override_path = overrides / name / (target + ".md")
-            if not override_path.is_file():
-                override_path = overrides / name / "SKILL.md"
-            patch = overrides.parent.parent / "patches" / "skills" / name / (target + ".json")
-            if not patch.is_file():
-                patch = overrides.parent.parent / "patches" / "skills" / name / "all.json"
-            result = read_skill(skill, override_path, patch, name, target)
-            for rel, data in result.items():
-                key = f"skills/{name}/{rel}"
-                if key in files:
-                    raise ValueError(f"Duplicate skill: {name}")
-                files[key] = data
-            count += 1
-    if count != 24:
-        raise ValueError(f"Upstream skill count changed ({count} != 24); review required")
+    for skill in skill_dirs(root, prefix):
+        if skill.name in EXCLUDED:
+            continue
+        name = skill.name
+        override_path = overrides / name / (target + ".md")
+        if not override_path.is_file():
+            override_path = overrides / name / "SKILL.md"
+        patch = overrides.parent.parent / "patches" / "skills" / name / (target + ".json")
+        if not patch.is_file():
+            patch = overrides.parent.parent / "patches" / "skills" / name / "all.json"
+        result = read_skill(skill, override_path, patch, name, target)
+        for rel, data in result.items():
+            key = f"skills/{name}/{rel}"
+            if key in files:
+                raise ValueError(f"Duplicate skill: {name}")
+            files[key] = data
+        count += 1
+    if count != expected:
+        raise ValueError(f"Upstream {kind} skill count changed ({count} != {expected}); review required")
     return files
 
 
-def local_hook_assets() -> dict[str, bytes]:
-    """Package independently authored local adapters only; no upstream CLI code."""
-    root = Path(__file__).resolve().parents[1]
-    result = {"src/__init__.py": b"", "src/hooks/__init__.py": b""}
-    for name in ("adapter.py", "capture.py", "state_store.py"):
-        target = root / "src/hooks" / name
-        if not target.is_file():
-            raise ValueError(f"Local hook module missing: {name}")
-        result[f"src/hooks/{name}"] = target.read_bytes()
-    wrapper = (
-        "from pathlib import Path\n"
-        "import sys\n"
-        "sys.path.insert(0, str(Path(__file__).resolve().parents[1]))\n"
-        "from src.hooks.adapter import main\n"
-        "if __name__ == '__main__':\n"
-        "    sys.exit(main())\n"
-    )
-    result["hooks/bm_hook.py"] = wrapper.encode("utf-8")
-    def command(verb: str) -> dict:
-        return {"type": "command",
-                "command": f'python3 "{chr(36)}{{CLAUDE_PLUGIN_ROOT}}/hooks/bm_hook.py" {verb} --harness claude',
-                "timeout": 15}
-    hook_events = {
-        "SessionStart": [{"hooks": [command("session-start")]}],
-        "PreCompact": [{"hooks": [command("pre-compact")]}],
-        "PostToolUse": [{"matcher": r"mcp__.*__bm_(write|edit|read)",
-                         "hooks": [command("post-tool")]}],
-        "PostToolUseFailure": [{"matcher": r"mcp__.*__bm_(write|edit|read)",
-                                "hooks": [command("post-tool-failure")]}],
-        "SessionEnd": [{"hooks": [command("session-end")]}],
-        "Stop": [{"hooks": [command("stop")]}],
-    }
-    result["hooks/hooks.json"] = json_bytes({
-        "description": "Offline-only Basic Memory checkpoint control; writes/reads use MCP from the agent",
-        "hooks": hook_events,
-    })
+def native_assets(upstream: Path, target: str) -> dict[str, bytes]:
+    """Non-skill assets the native bm-* skills reference (schemas, output style)."""
+    base = upstream / ("plugins/claude-code" if target == "claude" else "plugins/codex")
+    dirs = ("schemas", "output-styles") if target == "claude" else ("schemas",)
+    result: dict[str, bytes] = {}
+    for d in dirs:
+        root = base / d
+        if not root.is_dir():
+            raise ValueError(f"Missing upstream {d}/ for {target}; review required")
+        for f in sorted(root.rglob("*")):
+            if f.is_symlink():
+                raise ValueError(f"Upstream symlink rejected: {f}")
+            if not f.is_file():
+                continue
+            data = f.read_bytes()
+            if f.suffix == ".md":
+                text = normalize_namespace(data.decode("utf-8"))
+                for forbidden in DENY:
+                    if forbidden in text:
+                        raise ValueError(f"Blocked local-install/cloud instruction in {d}/{f.name}: {forbidden}")
+                data = text.encode("utf-8")
+            result[f"{d}/{f.relative_to(root).as_posix()}"] = data
     return result
 
 
-def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str, openai_variant: str | None, app_id: str | None) -> dict[str, bytes]:
-    assets = select_skills(upstream, overrides, target)
-    assets["UPSTREAM_ATTRIBUTION.md"] = (
-        "# Basic Memory upstream attribution\n\n"
-        f"Upstream repository: https://github.com/basicmachines-co/basic-memory\n"
-        f"Source revision: {cfg['upstream_sha']}\n\n"
-        "This plugin is licensed under AGPL-3.0-or-later (see LICENSE). It "
-        "includes skill content and other selected assets copied from upstream "
-        "Basic Memory, which is licensed under AGPL-3.0-or-later; some upstream "
-        "subcomponents additionally declare MIT. Upstream copyright notices are "
-        "preserved.\n"
-    ).encode()
-    assets["LICENSE"] = (Path(__file__).resolve().parent.parent / "LICENSE").read_bytes()
+def local_hook_assets() -> dict[str, bytes]:
+    """One stateless SessionStart brief; upstream's hooks need a local CLI."""
+    source = Path(__file__).resolve().parents[1] / "src/hooks/session_start.py"
+    if not source.is_file():
+        raise ValueError("Local hook missing: src/hooks/session_start.py")
+    return {
+        "hooks/session_start.py": source.read_bytes(),
+        "hooks/hooks.json": json_bytes({
+            "description": "Basic Memory (NAS) session brief from local settings; no network, no state",
+            "hooks": {"SessionStart": [{"hooks": [{
+                "type": "command",
+                "command": 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py"',
+                "timeout": 10,
+                "statusMessage": "Basic Memory session brief",
+            }]}]},
+        }),
+    }
+
+
+EXTRAS_KEY = META_KEY + "-extras"
+
+
+def common_assets(cfg: dict) -> dict[str, bytes]:
+    return {
+        "UPSTREAM_ATTRIBUTION.md": (
+            "# Basic Memory upstream attribution\n\n"
+            f"Upstream repository: https://github.com/basicmachines-co/basic-memory\n"
+            f"Source revision: {cfg['upstream_sha']}\n\n"
+            "This plugin is licensed under AGPL-3.0-or-later (see LICENSE). It "
+            "includes skill content and other selected assets copied from upstream "
+            "Basic Memory, which is licensed under AGPL-3.0-or-later; some upstream "
+            "subcomponents additionally declare MIT. Upstream copyright notices are "
+            "preserved.\n"
+        ).encode(),
+        "LICENSE": (Path(__file__).resolve().parent.parent / "LICENSE").read_bytes(),
+    }
+
+
+def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str, openai_variant: str | None, app_id: str | None, kind: str = "core") -> dict[str, bytes]:
+    if target == "openai" and openai_variant != "M":
+        if openai_variant == "R":
+            # Registered connection mapping must be tested with real plugin-creator.
+            raise ValueError("OpenAI variant R requires a verified .app.json from G0-O")
+        raise ValueError("OpenAI target gated: choose a verified --openai-variant M or R")
+    assets = select_skills(upstream, overrides, target, kind)
+    assets.update(common_assets(cfg))
+    name = META_KEY if kind == "core" else EXTRAS_KEY
+    description = ("Basic Memory plugin for a self-hosted server: upstream skills, schemas and output style"
+                   if kind == "core" else
+                   "Optional Basic Memory memory-* skill library; requires basic-memory-nas")
+    if kind == "core":
+        assets.update(native_assets(upstream, target))
     if target == "claude":
         assets[".claude-plugin/plugin.json"] = json_bytes({
-            "name": META_KEY, "version": version,
-            "description": "Self-hosted Basic Memory knowledge graph on a remote NAS",
+            "name": name, "version": version, "description": description,
             "author": {"name": "elconcept"}, "repository": PLUGIN_REPO,
             "license": "AGPL-3.0-or-later",
         })
-        assets[".mcp.json"] = json_bytes({
-            "mcpServers": {cfg["mcp_server_key"]: {"type": "http", "url": cfg["mcp_url"]}}
-        })
-        # Candidate only. Lifecycle hook execution requires Claude G1 confirmation.
-        assets.update(local_hook_assets())
+        if kind == "core":
+            assets[".mcp.json"] = json_bytes({
+                "mcpServers": {cfg["mcp_server_key"]: {"type": "http", "url": cfg["mcp_url"]}}
+            })
+            assets.update(local_hook_assets())
     else:
         ext: dict = {"interface": {
-            "displayName": "Basic Memory (NAS)",
+            "displayName": "Basic Memory (NAS)" if kind == "core" else "Basic Memory (NAS) extras",
             "shortDescription": "Memory and notes via a self-hosted Basic Memory server",
             "developerName": "elconcept", "category": "Productivity",
             "capabilities": ["Read", "Write"], "websiteURL": PLUGIN_REPO,
         }}
-        if openai_variant == "M":
+        if kind == "core":
             assets["mcp.json"] = json_bytes({
                 "$schema": OPENAI_MCP_SCHEMA, "mcpServers": {
                     cfg["mcp_server_key"]: {
@@ -227,15 +267,9 @@ def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str
                     }
                 }
             })
-        elif openai_variant == "R":
-            # Registered connection mapping must be tested with real plugin-creator.
-            # Never fabricate a .app.json mapping from an ID.
-            raise ValueError("OpenAI variant R requires a verified .app.json from G0-O")
-        else:
-            raise ValueError("OpenAI target gated: choose a verified --openai-variant M or R")
         assets["plugin.json"] = json_bytes({
-            "$schema": OPENAI_SCHEMA, "name": META_KEY, "version": version,
-            "description": "Self-hosted Basic Memory skills and remote MCP",
+            "$schema": OPENAI_SCHEMA, "name": name, "version": version,
+            "description": description,
             "repository": PLUGIN_REPO, "license": "AGPL-3.0-or-later",
             "extensions": {"com.openai": ext},
         })
@@ -264,31 +298,34 @@ def build(upstream: Path, out: Path, overrides: Path, config_path: Path, target:
     version = cfg["version"]
     outputs: dict[str, dict[str, bytes]] = {}
     for host in targets:
-        outputs[host] = render(upstream, overrides, cfg, host, version, openai_variant, None)
+        outputs[host] = render(upstream, overrides, cfg, host, version, openai_variant, None, "core")
+        outputs[host + "-extras"] = render(upstream, overrides, cfg, host, version, openai_variant, None, "extras")
+    hosts = list(outputs)
     result = {
         "upstream_sha": cfg["upstream_sha"], "version": version,
         "targets": list(targets),
         "files": {host: len(files) for host, files in outputs.items()},
+        "packages": hosts,
         "content_sha256": sha256(b"".join(
             name.encode() + b"\0" + data
-            for host in targets for name, data in sorted(outputs[host].items())
+            for host in hosts for name, data in sorted(outputs[host].items())
         )),
-        "status": "CANDIDATE_ONLY_NOT_INSTALLED",
+        "status": "GENERATED",
     }
     if check:
-        changed = [f"{host}/{name}" for host in targets for name in compare_tree(out / host, outputs[host])]
+        changed = [f"{host}/{name}" for host in hosts for name in compare_tree(out / host, outputs[host])]
         if changed:
             raise ValueError("Generated artifacts differ: " + ", ".join(changed[:20]))
     else:
         out.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix=".bm-build-", dir=out) as tmp:
             staging = Path(tmp)
-            for host in targets:
+            for host in hosts:
                 for name, data in outputs[host].items():
                     path = staging / host / name
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_bytes(data)
-            for host in targets:
+            for host in hosts:
                 dest = out / host
                 if dest.exists():
                     shutil.rmtree(dest)

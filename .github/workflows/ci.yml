@@ -54,7 +54,6 @@ jobs:
           python scripts/build.py --upstream vendor/upstream --out . --target claude --check
           # OpenAI M remains a candidate until platform OAuth is validated.
           python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
-          python -m compileall -q claude/src
 
       - name: Detect whitespace errors
         run: git diff --check

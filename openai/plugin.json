@@ -1,6 +1,6 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "description": "Self-hosted Basic Memory skills and remote MCP",
+  "description": "Basic Memory plugin for a self-hosted server: upstream skills, schemas and output style",
   "extensions": {
     "com.openai": {
       "interface": {
@@ -19,5 +19,5 @@
   "license": "AGPL-3.0-or-later",
   "name": "basic-memory-nas",
   "repository": "https://github.com/elconcept/basic-memory-plugin",
-  "version": "1.0.0"
+  "version": "2.0.0"
 }

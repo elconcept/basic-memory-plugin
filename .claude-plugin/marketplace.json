@@ -4,17 +4,26 @@
     "name": "elconcept"
   },
   "metadata": {
-    "description": "Basic Memory on NAS — staged preview, review required"
+    "description": "Basic Memory for a self-hosted server: upstream plugin parity plus optional extras"
   },
   "plugins": [
     {
       "name": "basic-memory-nas",
       "source": "./claude",
-      "description": "Self-hosted Basic Memory via OAuth MCP; candidate pending platform verification",
+      "description": "Upstream Basic Memory plugin (8 bm-* skills, schemas, output style) wired to the self-hosted MCP server",
       "keywords": [
         "memory",
         "mcp",
         "self-hosted"
+      ]
+    },
+    {
+      "name": "basic-memory-nas-extras",
+      "source": "./claude-extras",
+      "description": "Optional upstream memory-* skill library; install only if you want it (requires basic-memory-nas)",
+      "keywords": [
+        "memory",
+        "skills"
       ]
     }
   ]
