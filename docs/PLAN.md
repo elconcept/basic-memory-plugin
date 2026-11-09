@@ -1,10 +1,19 @@
 # Plan wdrożenia: plugin `basic-memory-nas` (Claude + OpenAI)
 
-Wersja planu: 1.2.1, 2026-11-09
+Wersja planu: 1.3, 2026-11-09 — decyzje właściciela mają pierwszeństwo przed wcześniejszymi założeniami
 Status: DO REALIZACJI W GRANICACH BRAMEK. Kierunek zatwierdzony przez recenzenta GPT. Uwagi R01–R13 ([recenzja GPT](REVIEW_GPT_2026-11-09.md)) i draft v1.2 GPT wprowadzone; odpowiedź z uzasadnieniem w [REVIEW_CLAUDE_2026-11-09.md](REVIEW_CLAUDE_2026-11-09.md). Ostatnie zatwierdzenie należy do użytkownika.
 Repozytorium: `github.com/elconcept/basic-memory-plugin` (publiczne), gałąź robocza `impl/v1`
 Upstream: `github.com/basicmachines-co/basic-memory`, gałąź `main`. Pin w `config/upstream.lock.json` (stan odniesienia: `b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5`, 2026-11-08)
 Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0.0 na Synology DS1821, kontener `basic-memory-server`, stack Portainera `mcp-basic-memory`), za Cloudflare Access
+
+## Decyzje nadrzędne właściciela (2026-11-09)
+
+1. **AGPL-3.0:** publiczne repozytorium i kod własny pluginu są na licencji AGPL, zgodnej z upstreamem. Do publikowanych artefaktów należy dołączyć `LICENSE` oraz zachować oryginalne oznaczenia licencyjne komponentów.
+2. **Vanilla:** dotyczy nowego, standardowego Basic Memory na NAS. Projekt domyślny `main` jest prawidłowy; jakiekolwiek projekty z poprzednich instalacji są poza zakresem.
+3. **Auto-update:** worker ma automatycznie integrować nowe commity upstreamu po zaliczeniu testów, bez ręcznego zatwierdzania każdej rutynowej aktualizacji. Niepowodzenie testów musi blokować daną aktualizację i być zgłoszone. Obecne ograniczenia branch protection są do naprawienia, nie są życzeniem użytkownika.
+4. **Brak zmian w danych NAS:** żadnych importów, tworzenia historycznych projektów ani modyfikacji bazy w ramach tej korekty.
+
+Niniejsze decyzje mają pierwszeństwo przed starszymi sformułowaniami planu i dokumentami recenzji.
 
 ## Zmiany względem v1.1
 
@@ -12,20 +21,20 @@ Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0.0 na Synology DS1821
 |---|---|---|
 | V1 | Cel rozszerzony z „przeżyć kompakcję” na `recall → capture → consolidate`. Decyzje utrwalane w trakcie pracy upstreamowymi skillami; checkpoint jest siatką bezpieczeństwa, nie jedynym mechanizmem. | draft A1, R04, R07 |
 | V2 | `saved` wyłącznie po weryfikacji przez hook (ta sama notatka, ten sam projekt, linia `checkpoint_key`) albo po `confirm` użytkownika z terminala. `mark` usunięty, deklaracja modelu daje najwyżej `reported_by_model`. | R01, R03 |
-| V3 | Projekt: `primaryProject` z ustawień, a gdy go nie ma, domyślny projekt serwera (vanilla Basic Memory: `main`). Bez dodatkowego routingu między projektami. | użytkownik (1.2.1) |
+| V3 | Routing zgodny z vanilla: zwykła instancja używa projektu domyślnego `main`; pytanie tylko gdy brak pewnej konfiguracji. | korekta właściciela |
 | V4 | Materiał dzielony na części zamiast ucinania; sekcje „Decision candidates” i „Artifacts”; jawne `complete: false`. | R04 |
 | V5 | Pole `capture` (ok/partial/failed:powód) i siatka `SessionStart(compact)` bez wpisu. | R05 |
 | V6 | `SessionEnd` i odzyskiwanie sesji przerwanych bez kompakcji. | R07 |
 | V7 | `PostToolUseFailure`. | R10 |
 | V8 | Build per cel (`--target`), natywne `bm-*` osobno dla Claude i Codex, nadpisania i patche per cel. | R08, R09 |
-| V9 | G4 bez `Config.Env` w ogóle; absolutna ścieżka CLI `/app/.venv/bin/basic-memory`. | R06, NAS_PRECHECK |
+| V9 | Diagnostyka G4 bez przekazywania `Config.Env`; CLI i MCP instancji vanilla powinny wskazywać ten sam domyślny projekt `main`. | R06, korekta właściciela |
 | V10 | G0-O z ośmioma osobnymi wynikami; §10 z testami OAuth od zewnątrz i kontrolą obejścia Cloudflare. | R11, R12 |
-| V11 | Worker upstreamu: codziennie snapshot `vendor/upstream` + regeneracja artefaktów, po zielonych testach **commit bezpośrednio na `main`**, bez PR i bez ochrony gałęzi; issue przy awarii. | użytkownik (1.2.1) |
-| V12 | Licencja repozytorium i pluginu: **AGPL-3.0-or-later** (jak upstream). | użytkownik (1.2.1) |
+| V11 | Aktualizacje upstreamu wdrażane automatycznie po pomyślnych testach (PR może być etapem technicznym). Błędy raportowane bez cichego sukcesu. | korekta właściciela |
+| V12 | Licencja repozytorium: AGPL-3.0; zachować notices i odrębne licencje elementów upstreamu. | korekta właściciela |
 | V13 | Konserwacja wiedzy: cztery skille przez `cloudcli-cron` w holyclaude (bramka G7, faza F11), tylko do odczytu wymuszone konfiguracją. | draft A4/C, K5 |
 | V14 | F10 rozszerzony: wariant z kompakcją (A), bez kompakcji (B), dwie kompakcje (C); raport etapowy. | R07, R13 |
 | V15 | Jedna numeracja: fazy F, bramki G. Zadania T00–T10 z draftu zmapowane w §11.0. | K4 |
-| V16 | Korekta 1.2.1: usunięte wszystkie założenia o projektach `legal` i `model-memory`. To wewnętrzne projekty wcześniejszej, nieudanej instalacji, bez związku z tym wdrożeniem vanilla. NAS ma jeden projekt `main` i to jest stan prawidłowy. | użytkownik |
+| V16 | Korekta 1.2.1: usunięte wszystkie założenia o projektach historyczne projekty. To wewnętrzne projekty wcześniejszej, nieudanej instalacji, bez związku z tym wdrożeniem vanilla. NAS ma jeden projekt `main` i to jest stan prawidłowy. | użytkownik |
 
 ---
 
@@ -72,11 +81,11 @@ Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (d
   - widoczny w `bm-status`.
 
   Cicha utrata jest niedopuszczalna. Brak materiału lub błąd przechwycenia to jawny stan (`capture: failed:…`), nie cisza.
-- **N7.** Zmiany z upstreamu trafiają automatycznie: worker codziennie aktualizuje snapshot i artefakty i po zielonych testach commituje bezpośrednio na `main`. Nieudany build lub test = brak commitu i issue (§9.2).
-- **N8.** Projekt pamięci: `primaryProject` z ustawień, a bez niego domyślny projekt serwera (obecnie `main`, `is_default=true`). Hook zapisuje projekt w wpisie, a ponowienia dotyczą tego samego projektu.
+- **N7.** Automatyczne monitorowanie i aktualizowanie upstreamu po pomyślnej walidacji; brak obowiązkowego ręcznego merge, wymuszonego draft lub domyślnego no-auto-merge. Błąd builda/CI blokuje daną aktualizację i tworzy raport.
+- **N8.** Świeża instancja vanilla ma domyślny projekt `main`, który jest prawidłowy. Historyczne projekty innych instancji nie są wymagane ani weryfikowane. Dla jawnie skonfigurowanych dodatkowych projektów zachowaj separację.
 - **N9.** Niczego nie usuwasz z konfiguracji użytkownika bez uprzedniej kopii do `~/.bm-migration-backup/<YYYYmmdd-HHMMSS>/` z zachowaniem ścieżek względnych. Lista przeniesionych elementów trafia do VERIFICATION.md.
-- **N10.** Repozytorium i plugin są na licencji **AGPL-3.0-or-later** (`LICENSE` w korzeniu i w każdym artefakcie). Kod i treści upstreamu (AGPL-3.0-or-later, części dodatkowo MIT) można kopiować i adaptować z zachowaniem informacji o autorstwie (`UPSTREAM_ATTRIBUTION.md`).
-- **N11.** Zaplanowane procesy (holyclaude) mają ograniczenia wymuszone konfiguracją uprawnień, nie tylko treścią promptu. Jeden przebieg = jeden jawny projekt.
+- **N10.** Repozytorium i własny kod są na AGPL-3.0; wolno korzystać z upstreamowego kodu AGPL przy zachowaniu obowiązków licencyjnych, oryginalnych notices i informacji o modyfikacjach. Nie kopiować komponentów niepotrzebnych do pluginu.
+- **N11.** Zadania holyclaude używają wyłącznie projektu zweryfikowanego jako domyślny (`main`) i ograniczeń uprawnień wymuszanych konfiguracją.
 
 ---
 
@@ -104,8 +113,8 @@ Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (d
 | U18 | MacBook, Codex: włączony `codex@basic-memory` (MCP przez `uvx`) oraz wpis `mcp_servers.basic_memory` → `https://bm.xlap.pl/mcp` | wcześniejszy audyt | do potwierdzenia w F0 |
 | U19 | Wszystkie 8 `bm-*` różni się między wariantem Claude i Codex (19–414 różniących się linii) | diff @b7d4006 | pewne |
 | U20 | Licencje upstreamu: korzeń AGPL-3.0-or-later; `skills/README.md` oraz `plugin.json` obu pluginów deklarują dodatkowo MIT | kod @b7d4006 | pewne |
-| U21 | NAS: CLI tylko jako `/app/.venv/bin/basic-memory` (nie ma w `PATH` w `docker exec`), wersja 1.0.0; `project list --json`: jeden projekt `main` (`is_default=true`). To stan oczekiwany dla wdrożenia vanilla. | `NAS_PRECHECK.md`, użytkownik | pewne |
-| U22 | GitHub: worker `sync-upstream.yml` aktywny na `main`. Od 1.2.1 commituje bezpośrednio na `main`; ochrona gałęzi `main` zdjęta, PR #3 zamknięty. | `gh`, użytkownik | pewne |
+| U21 | Kontener Basic Memory 1.0.0: CLI i MCP widzą wyłącznie projekt `main`. Jest to oczekiwany stan nowej instancji vanilla, nie awaria. | `NAS_PRECHECK.md`, `IMPLEMENTATION_LOG.md` | potwierdzone |
+| U22 | GH: automatyczny sync działa na `main`; CI na PR #3 ma zielony check `validate` (workflow_dispatch), lecz API zwraca `mergeable_state=blocked`. End-to-end automatyczne wdrożenie wymaga naprawy. | GitHub API, 2026-11-09 | potwierdzone |
 | U23 | Holyclaude: `cloudcli-cron` v0.2.0 zainstalowany, 0 ledgerów. Obsługuje daily/weekdays/weekly/monthly, Run Now, Pause/Resume, Retry; bez własnej składni cron i bez „co 2 tygodnie”. | `HOLYCLAUDE_SCHEDULED_PROMPTS.md` | pewne co do instalacji; działanie **G7** |
 
 ---
@@ -139,7 +148,7 @@ Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (d
   5. **`Stop`:** wpis tej sesji inny niż `saved`/`dismissed`/`reported_by_model` i `stop_hook_active == false` → jednorazowa blokada tury na wpis.
   6. **Retencja:** materiał usuwany 7 dni po `saved`/`dismissed`. Wpisy niezakończone nie są usuwane; po 30 dniach oznaczane `stale` i zgłaszane do decyzji użytkownika.
 - **D6.** Wersjonowanie: wspólna wersja `1.0.N`, `N` rośnie przy zmianie zawartości generowanej. Pin upstreamu z `config/upstream.lock.json` trafia do `build-info.json`.
-- **D7.** Repozytorium publiczne, licencja **AGPL-3.0-or-later** (decyzja użytkownika). Atrybucja upstreamu w `UPSTREAM_ATTRIBUTION.md`.
+- **D7.** Repozytorium publiczne, własny kod i całość pluginu na AGPL-3.0; zachować licencje komponentów upstreamu, informację o zmianach i atrybucję.
 - **D8.** Bieżące utrwalanie i konserwację realizują skille upstreamu, bez własnych odpowiedników. Jedyny własny kod wykonywalny w pluginie to `bm_hook.py`, bo upstreamowe hooki wymagają lokalnego Basic Memory (U3, N5).
 - **D9.** Konserwacja wiedzy: `cloudcli-cron` w holyclaude (lokalny proces `claude`). Nie DSM, nie `/schedule`, nie `/loop`.
 
@@ -469,7 +478,7 @@ Dokładne nazwy pól sprawdź w dokumentacji przed pierwszym buildem. Rozbieżno
 
 | Klucz | Domyślnie |
 |---|---|
-| `primaryProject` | brak → domyślny projekt serwera (rozpoznawany przez model wywołaniem `bm_project`) |
+| `primaryProject` | `main` — domyślny projekt sprawdzony w bieżącej instancji Basic Memory |
 | `captureFolder` | `sessions` |
 | `orientOnStart` | `true` |
 | `checkpointOnCompact` | `true` |
@@ -740,7 +749,7 @@ Testy z zewnątrz (wynik w VERIFICATION.md, bez tokenów):
    - pięć awarii przechwycenia (`no_transcript_path`, `unreadable`, `unknown_format`, `local_write_error`, `boundary_uncertain`) i `missing_precompact` → wpis istnieje, brak cichego sukcesu;
    - przejścia `pending → written → saved`, `failed`, `PostToolUseFailure`;
    - **negatywne dla `saved`:** odczyt innej notatki zawierającej ten sam `ck` w tekście; odczyt w innym projekcie; `project_mismatch` przy zapisie; pusta odpowiedź; `isError`; `ck` tylko w środku linii (nie jako `checkpoint_key:`); `report` (G3-B) → `reported_by_model`, nigdy `saved`; `confirm` bez `/dev/tty` → odmowa;
-   - **routing:** blok ponowień zawiera wyłącznie wpisy tego samego projektu; wpis z `project: null` przyjmuje projekt z pierwszego udanego zapisu;
+    - **routing:** projekt domyślny `main`, syntetyczny projekt testowy i rzeczywiście nieustalony projekt; nie wolno zapisać do projektu innego niż rozpoznany;
    - `stop` blokuje raz na wpis i nie blokuje przy `stop_hook_active`;
    - `session-end` z progiem tur; odzyskiwanie sesji bez `SessionEnd`;
    - `guard` odrzuca `confirm` w Bash;
@@ -892,11 +901,11 @@ Benchmark wyszukiwania po polsku (20–50 zapytań na syntetycznym projekcie tes
 | Fallback G1 na konektor konta | Brak automatycznego fallbacku. STOP i osobna decyzja. | v1.1 |
 | Projekt | `primaryProject` albo domyślny projekt serwera (`main`); jedno wdrożenie vanilla, bez innych projektów | użytkownik (1.2.1) |
 | `memory-literary-analysis` | Wykluczony. 24 skille na cel. | v1.1 |
-| Sync upstreamu | Raz dziennie, po zielonych testach commit bezpośrednio na `main`, bez PR i bez ochrony gałęzi; issue przy awarii | użytkownik (1.2.1) |
+| Sync upstreamu | Codzienny monitoring i automatyczna aktualizacja po zielonych testach. PR nie może wymagać rutynowego ręcznego zatwierdzania. | decyzja właściciela |
 | `saved` w Codex bez `PostToolUse` | Najwyżej `reported_by_model`; `saved` tylko po `confirm` użytkownika | R01 |
 | Scheduler konserwacji | `cloudcli-cron` w holyclaude; nie DSM, `/schedule`, `/loop` | draft, użytkownik |
 | Częstotliwość `memory-defrag` | Raz w miesiącu, tylko propozycje | Claude (cotygodniowo to szum) |
-| Licencja | AGPL-3.0-or-later dla repo i pluginu | użytkownik (1.2.1) |
+| Licencja | Całe repo i własny kod: AGPL-3.0; zachowaj notices upstreamu. | decyzja właściciela |
 
 **Pytania otwarte do użytkownika:**
 1. F11 pkt 4: czy w ogóle dopuszczasz zapis przez zaplanowane procesy, czy konserwacja ma pozostać trwale w trybie raportów?
