@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Mirror upstream Basic Memory plugin sources without executing upstream code.
+"""Mirror upstream Basic Memory assets without executing upstream code.
 
-Used only by GitHub Actions. Copies public upstream assets into a reviewable
-staging snapshot; the local build pipeline can later turn this into plugins.
+GitHub Actions regenerates plugin artifacts from this snapshot, validates the
+result, and commits changes automatically only after the checks pass.
 """
 from __future__ import annotations
 
@@ -144,7 +144,7 @@ def synchronize(source: Path, dest: Path, lock_path: Path, sha: str, report: Pat
         "upstream_sha": sha,
         "snapshot_digest": digest(files),
         "file_count": len(files),
-        "integration_status": "source-staging-until-artifact-build-is-tested",
+        "integration_status": "snapshot-requires-generated-artifact-validation-before-commit",
     }
 
     # Prepare complete replacement before touching tracked snapshot.
@@ -167,11 +167,11 @@ def synchronize(source: Path, dest: Path, lock_path: Path, sha: str, report: Pat
 
     notable = [line for line in changes if any(x in line for x in ("/hooks/", "plugin.json", ".mcp.json", "/schemas/", "LICENSE"))]
     summary = (
-        "# Upstream Basic Memory sync (review required)\n\n"
+        "# Upstream Basic Memory sync (automated validation)\n\n"
         f"- Base SHA: \`{prior_sha or 'none'}\`\n"
         f"- Candidate SHA: \`{sha}\`\n"
         f"- Snapshot files: {len(files)}; changed paths: {len(changes)}\n"
-        "- **No auto-merge.** A reviewer must check upstream changes and licenses.\n"
+        "- Commit is automatic only after regenerated artifacts pass all checks.\n"
         "- Until artifact builds pass, changes in \`vendor/upstream\` are *staged source*, not a deployed client update.\n"
         "- The upstream checkout is data only: its code is not executed by this workflow.\n\n"
         "## Changed paths\n\n" +
