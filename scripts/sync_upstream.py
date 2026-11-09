@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import tempfile
@@ -106,9 +107,29 @@ def previous_files(dest: Path) -> dict[str, bytes]:
     }
 
 
-def synchronize(source: Path, dest: Path, lock_path: Path, sha: str, report: Path) -> dict:
+def prepare_build_config(path: Path | None, sha: str) -> tuple[bytes | None, str | None]:
+    """Bump the plugin version exactly once for an actual upstream SHA change."""
+    if path is None or not path.exists():
+        return None, None
+    cfg = json.loads(path.read_text(encoding="utf-8"))
+    current = cfg.get("upstream_sha")
+    version = cfg.get("version")
+    if not isinstance(current, str) or not isinstance(version, str):
+        raise ValueError("Build config lacks upstream_sha or version")
+    if not re.fullmatch(r"1\.0\.[0-9]+", version):
+        raise ValueError("Unsupported version; manual review required")
+    if current == sha:
+        return None, version
+    parts = version.split(".")
+    cfg["version"] = ".".join([parts[0], parts[1], str(int(parts[2]) + 1)])
+    cfg["upstream_sha"] = sha
+    return (json.dumps(cfg, ensure_ascii=False, indent=2) + "\n").encode("utf-8"), cfg["version"]
+
+
+def synchronize(source: Path, dest: Path, lock_path: Path, sha: str, report: Path, build_config: Path | None = None) -> dict:
     if len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha):
         raise ValueError("Upstream SHA must be 40 lowercase hex characters")
+    updated_build, release_version = prepare_build_config(build_config, sha)
     files = collect(source)
     old_files = previous_files(dest)
     old_lock = json.loads(lock_path.read_text("utf-8")) if lock_path.exists() else {}
@@ -141,6 +162,8 @@ def synchronize(source: Path, dest: Path, lock_path: Path, sha: str, report: Pat
 
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if updated_build is not None and build_config is not None:
+        build_config.write_bytes(updated_build)
 
     notable = [line for line in changes if any(x in line for x in ("/hooks/", "plugin.json", ".mcp.json", "/schemas/", "LICENSE"))]
     summary = (
@@ -170,8 +193,9 @@ def main() -> None:
     parser.add_argument("--lock", type=Path, required=True)
     parser.add_argument("--sha", required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--build-config", type=Path)
     args = parser.parse_args()
-    result = synchronize(args.source.resolve(), args.dest, args.lock, args.sha, args.report)
+    result = synchronize(args.source.resolve(), args.dest, args.lock, args.sha, args.report, args.build_config)
     print(json.dumps({"upstream_sha": args.sha, "changed_paths": len(result["changes"]), "snapshot_files": result["manifest"]["file_count"]}))
 
 
