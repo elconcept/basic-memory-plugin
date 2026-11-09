@@ -246,6 +246,7 @@ def compare_tree(root: Path, assets: dict[str, bytes]) -> list[str]:
     actual = {
         p.relative_to(root).as_posix(): p.read_bytes()
         for p in root.rglob("*") if p.is_file()
+        and "__pycache__" not in p.parts and p.suffix not in {".pyc", ".pyo"}
     } if root.is_dir() else {}
     return [name for name in sorted(set(assets) | set(actual)) if actual.get(name) != assets.get(name)]
 
