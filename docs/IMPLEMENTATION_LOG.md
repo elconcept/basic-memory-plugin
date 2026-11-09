@@ -1,7 +1,7 @@
 # Basic Memory NAS — stan wdrożenia i trwałe checkpointy
 
 **Ostatnia aktualizacja:** 2026-11-09. **Branch implementacji:** `impl/v1`.  
-**Plan do recenzji:** [PLAN_v1.2_DRAFT.md](PLAN_v1.2_DRAFT.md)  
+**Plan obowiązujący:** [PLAN.md v1.2](PLAN.md) (draft v1.2 wchłonięty; odpowiedź Claude: [REVIEW_CLAUDE_2026-11-09.md](REVIEW_CLAUDE_2026-11-09.md))  
 **PR do recenzji Claude:** https://github.com/elconcept/basic-memory-plugin/pull/4 (draft, bez merge)  
 **Upstream worker:** https://github.com/elconcept/basic-memory-plugin/actions/workflows/sync-upstream.yml  
 **Pierwszy PR upstream snapshot:** https://github.com/elconcept/basic-memory-plugin/pull/3 (draft, bez merge)
@@ -48,6 +48,15 @@
 - CLI działa jako `/app/.venv/bin/basic-memory`, wersja **1.0.0**. W interaktywnym `docker exec` komenda `basic-memory` bez ścieżki nie znajduje się w `PATH`.
 - `project list --json` przez CLI pokazuje tylko `main`. Porównanie z MCP i tożsamość danych pozostają **PENDING**. Nie wolno zakładać utraty innych projektów.
 - Nie modyfikowano ani nie restartowano kontenera i bazy.
+
+## Recenzja Claude i plan v1.2 (2026-11-09)
+
+- R01–R13 przyjęte (cztery z modyfikacją), pytania 1–8 z draftu rozstrzygnięte: [REVIEW_CLAUDE_2026-11-09.md](REVIEW_CLAUDE_2026-11-09.md).
+- `docs/PLAN.md` podniesiony do v1.2; `PLAN_v1.2_DRAFT.md` wchłonięty i usunięty (historia git). Obowiązuje jedna numeracja F/G, mapowanie T→F w PLAN §11.0.
+- Blokery wykonawcze dla GPT, w kolejności:
+  1. **K1:** PR #3 nie ma checku `validate` (PR z `GITHUB_TOKEN` nie uruchamia CI). Poprawka w `sync-upstream.yml`: `actions: write` + `gh workflow run ci.yml --ref sync/upstream`; plus issue przy awarii (PLAN §9.2 pkt 6–7). PR infrastrukturalny.
+  2. **K2:** hook i walidacja bez kodu pochodnego od AGPL (`src/`, `scripts/` upstreamu); dodać `NOTICE` (PLAN N10, §6.2).
+  3. **K3:** G4 zatrzymane na rozbieżności projektów CLI (`main`) vs MCP (`main`, `legal`, `model-memory`); diagnoza tylko odczytem według PLAN G4 pkt 5, pytanie do użytkownika.
 
 ## Nieukończone etapy (dla następnego modelu)
 

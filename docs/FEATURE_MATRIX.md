@@ -17,7 +17,7 @@
 | `memory-comark` | Wizualne dyrektywy Comark | Zachować tekst na self-hosted, renderer Cloud-only | Skopiowany |
 | `memory-continue` | Wznowienie pracy z wiedzy | Aktywować na żądanie i wznowienie sesji | Skopiowany |
 | `memory-curate` | Graf, relacje, duplikaty | **Holyclaude scheduled prompt** 1×/tydzień, raport przed zmianami | Skopiowany |
-| `memory-defrag` | Refaktoryzacja nadmiernych/zdublowanych notatek | **Holyclaude scheduled prompt** co 2 tygodnie, wymagane zatwierdzenie | Skopiowany |
+| `memory-defrag` | Refaktoryzacja nadmiernych/zdublowanych notatek | **Holyclaude scheduled prompt** raz w miesiącu, tylko propozycje (PLAN v1.2 F11) | Skopiowany |
 | `memory-doctor` | Diagnostyka indeksów i zapisów | NAS read-only, naprawa po akceptacji | Nadpisany |
 | `memory-ingest` | Strukturyzacja wejścia | Opcjonalne importy, provenance, bez zmian oryginału | Skopiowany |
 | `memory-lifecycle` | Statusy, foldery, archiwum | **Holyclaude scheduled prompt** tygodniowy, bez automatycznych delete | Skopiowany |
@@ -86,7 +86,7 @@ Oznaczenia stosowane w dalszej pracy:
 - **SCHEDULED-VERIFIED** = prompt holyclaude ma zapisany termin oraz co najmniej jeden udany log wykonania.
 - **GH-ACTIVE** = workflow na `main` + uruchomienie i wynik + prawa do tworzenia PR.
 
-Obecnie ta macierz stwierdza tylko SOURCE-VERIFIED. Pozostałe statusy mają oddzielne bramki w [PLAN_v1.2_DRAFT.md](PLAN_v1.2_DRAFT.md).
+Obecnie ta macierz stwierdza tylko SOURCE-VERIFIED. Pozostałe statusy mają oddzielne bramki w [PLAN.md v1.2](PLAN.md).
 
 ## 5. Źródła do recenzji Claude
 

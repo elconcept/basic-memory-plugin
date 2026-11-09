@@ -12,7 +12,7 @@
 - `/schedule` Claude Code: **cloud routine** w infrastrukturze Anthropic, a nie automatycznie zadanie wewnątrz kontenera HolyClaude.
 - DSM Task Scheduler: **wyłączony z architektury** na życzenie użytkownika.
 
-## Bramka G0-Holyclaude
+## Bramka G7 (dawniej G0-Holyclaude)
 
 1. Upewnić się, że plugin `cloudcli-cron` jest aktywny w CloudCLI UI (`Settings → Plugins`); obecność katalogu nie wystarcza.
 2. Zweryfikować `Claude Code` preset: binarka `claude` w kontenerze, proces uruchamiany w wybranym workspace, konfiguracja autoryzacji i dostęp do MCP `bm.xlap.pl` przez plugin `basic-memory-nas`. **Nie** przyjmować, że nowy proces CLI dziedziczy autoryzację z otwartej sesji.
@@ -20,6 +20,7 @@
 4. Skonfigurować próbny prompt tylko do odczytu, kliknąć **Run Now**, sprawdzić historię, status procesu i odczyt przez `bm_project` + `bm_search`.
 5. Następny test z jedną syntetyczną notatką testową `bm_write` + `bm_read`. Zapisać dowód odczytu z właściwego projektu; po testach usunąć wyłącznie tę notatkę z identyfikatorem testowym.
 6. Dopiero po zaliczeniu włączyć cztery schedule poniżej, każdemu przypisując **jawny projekt `main`**. Dla `legal` stworzyć osobny zestaw tylko na wyraźne zlecenie i po ocenie ryzyk. Nie uruchamiać jednego promptu w wielu projektach.
+6a. **Ograniczenia wymuszone konfiguracją, nie promptem** (PLAN v1.2 G7, N11): workspace harmonogramu ma `.claude/settings.json` z `permissions.deny` dla `bm_write`, `bm_edit`, `bm_move`, `bm_delete`, `bm_project_delete` (pełne nazwy z `claude_tool_prefix`). Test negatywny: prompt prosi o `bm_delete` notatki testowej → odmowa, notatka nienaruszona. Niezaliczony test = STOP (G7-C).
 7. Zapis konfiguracji tylko przez obsługiwany UI/API pluginu. Nie edytować ręcznie prywatnych ledgerów JSON.
 8. Po pierwszym zaplanowanym wykonaniu porównać status `succeeded` z rzeczywistym wynikiem MCP. Sam exit code 0 nie wystarcza do twierdzenia, że notatki zostały zapisane.
 
@@ -54,10 +55,10 @@ Use basic-memory-nas:memory-curate for Basic Memory project "main" only.
 Read graph relationships and find orphan notes, duplicate candidates, missing relations, and conflicting metadata. Produce a ranked curation proposal with exact note IDs and reasons. Do not merge, delete, rewrite or cross-copy anything automatically. Any new curated index or relationship must be proposed for approval first. Return auditable links and status; treat failure to fetch as FAILURE, not as "nothing to curate".
 ~~~
 
-### 3. Weekly (rather than unsupported biweekly) — memory-defrag
+### 3. Monthly — memory-defrag
 
 - Nazwa: `BM main — defrag proposal`
-- Częstotliwość: weekly, Sunday 03:10; **proposal-only**; choose monthly as alternative if weekly is too frequent
+- Częstotliwość: monthly, 1. dzień miesiąca 03:10; **proposal-only** (PLAN v1.2 F11: cotygodniowe propozycje defragmentacji to głównie szum)
 - Docelowy skill: `basic-memory-nas:memory-defrag`
 
 ~~~text
