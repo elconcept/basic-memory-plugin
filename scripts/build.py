@@ -80,9 +80,6 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
             data = f.read_bytes()
         if f.suffix == ".md":
             text = data.decode("utf-8")
-            text = text.replace("/basic-memory:", "/basic-memory-nas:")
-            text = text.replace("basic-memory:bm-", "basic-memory-nas:bm-")
-            text = text.replace("codex:bm-", "basic-memory-nas:bm-")
             if f.name == "SKILL.md" and patch_file.is_file():
                 if override is not None and override.is_file():
                     raise ValueError(f"Override and patch conflict: {name}")
@@ -94,6 +91,9 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
                     if not old or text.count(old) != 1:
                         raise ValueError(f"Upstream patch anchor changed: {name} / {old[:60]!r}")
                     text = text.replace(old, new, 1)
+            text = text.replace("/basic-memory:", "/basic-memory-nas:")
+            text = text.replace("basic-memory:bm-", "basic-memory-nas:bm-")
+            text = text.replace("codex:bm-", "basic-memory-nas:bm-")
             data = text.encode("utf-8")
         files[rel] = data
     if "SKILL.md" not in files:
@@ -205,6 +205,10 @@ def build(upstream: Path, out: Path, overrides: Path, config_path: Path, target:
     lock = json.loads(manifest_lock.read_text(encoding="utf-8")) if manifest_lock.exists() else None
     if lock is not None and lock.get("upstream_sha") != cfg["upstream_sha"]:
         raise ValueError("Upstream lock SHA disagrees with build config")
+    for patch in sorted((overrides.parent.parent / "patches" / "skills").rglob("*.json")):
+        metadata = json.loads(patch.read_text(encoding="utf-8"))
+        if metadata.get("upstream_sha") and metadata["upstream_sha"] != cfg["upstream_sha"]:
+            raise ValueError(f"Patch pinned to different upstream SHA: {patch}")
     targets = ("claude", "openai") if target == "all" else (target,)
     if target not in {"claude", "openai", "all"}:
         raise ValueError(f"Invalid build target: {target}")
