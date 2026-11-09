@@ -103,3 +103,38 @@ Ten fragment koryguje historyczny stan powyżej; poprzednich wyników i błędó
 
 - **Bez zaplanowanej konserwacji.** Harmonogramy `cloudcli-cron`, cztery prompty konserwacyjne (`f33d11ea`, `d40ee1ba`) i bramka G7/F11 wycofane; `HOLYCLAUDE_SCHEDULED_PROMPTS.md` usunięty. To nie był pomysł ani decyzja użytkownika. Na holyclaude niczego nie aktywować.
 - **Wdrożenie od razu.** Bez sondy `bm-probe`: plugin `basic-memory-nas` z `main` jest podpinany bezpośrednio do claude.ai i chatgpt.com (PLAN, decyzja właściciela 6).
+
+
+## Kontynuacja implementacji — aktualny stan po wdrożeniu na main (2026-11-09)
+
+**Ten blok zastępuje starsze fragmenty raportu mówiące, że main ma tylko draft PR lub nie posiada adaptera.** Raport zmian kodu i automatycznych testów NIE jest jeszcze dowodem instalacji pluginu u poszczególnych klientów.
+
+| Zakres | Dowód |
+|---|---|
+| Parser transkryptu i materiały checkpointów | 93f45919, 1b6dfe12, 1e9d0f76; fixture testy są syntetyczne |
+| Lokalna maszyna stanów i adapter zdarzeń | 06ec04dc, 0a9fe445, d85923df, f248ec54, 086ab000 |
+| Pakowanie manifestu Claude z SessionStart, PreCompact, PostToolUse, PostToolUseFailure, Stop, SessionEnd | fa20eea1, 4079e325, c2857977 |
+| Domyślny projekt vanilla main | fd3e0ef5, a645a80c |
+| Materiał checkpointu wyłącznie dla przypisanego projektu | 5995cd55 |
+| Zakotwiczone poprawki bm-checkpoint, bm-orient, memory-okf dla obu klientów | 8d5fa7d2, 5a2a479f, 68798779, f678154b, 696d6933 |
+| Wygenerowane pliki hooków i skilli | PR #8 -> merge 00ef3f63 do impl/v1; commit a320bf79 na main |
+| Scalenie kodu impl/v1 z main | 1f69007a |
+| CI wymusza dokładną zgodność obu opublikowanych pakietów z upstreamem | 48f45016; zielony przebieg 42660857083 |
+
+### Worker GitHub Actions — sprawdzony po integracji
+
+- Harmonogram: **03:23 UTC codziennie** oraz ręczny workflow_dispatch.
+- Obecna polityka planu 1.3.1: po testach aktualizacja bezpośrednio do main, bez draft PR; awaria -> jedno aktualizowane zgłoszenie.
+- [Ręczny przebieg 42660609143](https://github.com/elconcept/basic-memory-plugin/actions/runs/42660609143): **SUCCESS**, w tym snapshot, testy, regeneracja i check obu artefaktów. SHA main pozostał bez zmian — brak nowych zmian upstream do commitowania.
+- [CI 42660857083](https://github.com/elconcept/basic-memory-plugin/actions/runs/42660857083): **SUCCESS**; ścisła kontrola zgodności commitowanych pakietów z vendor/upstream.
+- **Do dalszego pomiaru:** pierwszy przebieg automatyczny o zaplanowanej godzinie i pierwsza rzeczywista aktualizacja przy nowym SHA upstreamu. Udany ręczny run sam w sobie nie dowodzi wykonania harmonogramu.
+
+### Otwarte bramki
+
+- **CLIENT-VERIFIED:** GitHub CI i pliki w repo nie dowodzą załadowania pluginu do claude.ai, Claude Code, ChatGPT lub Codex. OAuth/MCP read/write/readback trzeba wykazać osobno na każdej platformie.
+- **F1 / G1:** adapter przetestowano na fixture'ach syntetycznych. Brak rzeczywistych zanonimizowanych payloadów PostToolUse, PostToolUseFailure i realnego readback, oraz E2E ciągłości pamięci 6/6 (z kompakcją i bez).
+- **F2:** w generatorze są zakotwiczone patche upstream; skille oraz mechanizm aktualizacji na klientach jeszcze nieprzetestowane.
+- **Holyclaude:** plan 1.3.1 wycofał konserwację według harmonogramu. Zadań nie aktywowano. Zmiana ta jest sprzeczna z wcześniejszym wariantem planu i nie została automatycznie cofnięta.
+- **NAS:** nie modyfikowano danych instancji Basic Memory; brak migracji i reindeksacji.
+
+**Następne kroki:** dowód załadowania pluginu w Claude i ChatGPT, weryfikacja prawdziwego formatu odpowiedzi MCP, pełne E2E 6/6, dopiero potem formalne ukończenie F1 i wdrożenia.
