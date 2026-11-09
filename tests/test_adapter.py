@@ -103,7 +103,7 @@ class AdapterTests(unittest.TestCase):
         (home / ".claude/settings.json").write_text(json.dumps({"basicMemory": {"primaryProject": "main"}}))
         (self.root / ".claude/settings.json").write_text(json.dumps({"basicMemory": {"primaryProject": "proj-a"}}))
         self.assertEqual(settings(self.root, "claude", {"HOME": str(home)})["primaryProject"], "proj-a")
-        self.assertIsNone(settings(self.root / "unused", "codex", {"HOME": str(home)})["primaryProject"])
+        self.assertEqual(settings(self.root / "unused", "codex", {"HOME": str(home)})["primaryProject"], "main")
 
     def test_only_structured_ref_is_accepted(self):
         self.assertIsNone(_ref({"content": [{"type": "text", "text": "Saved! id notes/abc"}]}))
