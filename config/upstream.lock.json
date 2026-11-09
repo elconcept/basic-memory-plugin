@@ -1,0 +1,7 @@
+{
+  "source_repo": "basicmachines-co/basic-memory",
+  "upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5",
+  "snapshot_digest": null,
+  "file_count": 0,
+  "integration_status": "source-staging-until-artifact-build-is-tested"
+}

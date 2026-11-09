@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, impl/v1, 'sync/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout complete history (required by gitleaks on PRs)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile sync implementation
+        run: python -m py_compile scripts/sync_upstream.py tests/test_sync_upstream.py
+      - name: Run regression tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Check upstream lock syntax
+        run: python -c "import json; p=json.load(open('config/upstream.lock.json')); assert len(p['upstream_sha'])==40"
+      - name: Detect secrets in repository files
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout pinned upstream source for a real-world smoke test
+        uses: actions/checkout@v4
+        with:
+          repository: basicmachines-co/basic-memory
+          ref: b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5
+          path: upstream
+          persist-credentials: false
+      - name: Verify worker against real upstream source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/sync_upstream.py \
+            --source upstream \
+            --dest "$RUNNER_TEMP/bm-source-snapshot" \
+            --lock "$RUNNER_TEMP/bm-upstream-lock.json" \
+            --sha "$(git -C upstream rev-parse HEAD)" \
+            --report "$RUNNER_TEMP/bm-upstream-report.md"
+          python -c 'import json,os;from pathlib import Path;p=Path(os.environ["RUNNER_TEMP"])/"bm-upstream-lock.json";d=json.loads(p.read_text());assert d["file_count"] >= 35,d'

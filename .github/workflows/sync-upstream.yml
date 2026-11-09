@@ -1,0 +1,75 @@
+name: Basic Memory upstream sync
+
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: basic-memory-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  upstream-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout plugin source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Checkout upstream main
+        uses: actions/checkout@v4
+        with:
+          repository: basicmachines-co/basic-memory
+          ref: main
+          path: upstream
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Synchronize upstream assets (no upstream execution)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git -C upstream rev-parse HEAD)"
+          python scripts/sync_upstream.py \
+            --source upstream \
+            --dest vendor/upstream \
+            --lock config/upstream.lock.json \
+            --sha "$sha" \
+            --report "$RUNNER_TEMP/upstream-report.md"
+      - name: Run snapshot tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Build artifacts when implementation is present
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f scripts/build.py; then
+            python scripts/build.py --upstream vendor/upstream --out .
+            python scripts/build.py --upstream vendor/upstream --out . --check
+          else
+            echo 'STAGING ONLY: no plugin build generator yet; do not merge as a release.'
+          fi
+      - name: Open or update a single review PR (never auto-merge)
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sync/upstream
+          base: main
+          delete-branch: true
+          draft: true
+          title: 'chore(upstream): synchronize Basic Memory sources'
+          commit-message: 'chore(upstream): update pinned Basic Memory sources'
+          body-path: ${{ runner.temp }}/upstream-report.md
+          add-paths: |
+            vendor/upstream
+            config/upstream.lock.json
+            claude
+            openai
+            build-info.json
