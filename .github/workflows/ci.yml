@@ -14,8 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout complete history (required by gitleaks on PRs)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Python 3.12
         uses: actions/setup-python@v5
         with:
