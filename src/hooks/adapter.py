@@ -171,17 +171,17 @@ class Adapter:
             self.store.set_capture(entry["ck"], "failed:" + t.failure, False, [])
             return entry
         complete_segment = not use_last_boundary or t.boundary
-        material = materialize(
-            t, {"ck": entry["ck"], "session_id": entry["session_id"], "seq": entry["seq"],
-                "trigger": trigger, "project": self.project or "UNASSIGNED"},
-            max_bytes=int(self.config["materialMaxBytes"]),
-            max_parts=int(self.config["materialMaxParts"]),
-        )
-        folder = self.store.directory / "material"
-        folder.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(folder, 0o700)
         created: list[str] = []
         try:
+            material = materialize(
+                t, {"ck": entry["ck"], "session_id": entry["session_id"], "seq": entry["seq"],
+                    "trigger": trigger, "project": self.project or "UNASSIGNED"},
+                max_bytes=int(self.config["materialMaxBytes"]),
+                max_parts=int(self.config["materialMaxParts"]),
+            )
+            folder = self.store.directory / "material"
+            folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+            os.chmod(folder, 0o700)
             for idx, part in enumerate(material.parts, start=1):
                 dest = folder / f"{entry['ck']}.{idx}.md"
                 fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -345,10 +345,12 @@ def main(argv: list[str] | None = None, stdin: Any = None, env: dict[str, str] |
             event = json.load(source)
         except (ValueError, TypeError):
             event = {}
+    if not isinstance(event, dict):
+        event = {}
     cwd = event.get("cwd") if isinstance(event.get("cwd"), str) else os.getcwd()
-    runner = Adapter(StateStore(_data_dir(args.harness, env)), args.harness,
-                     settings(Path(cwd), args.harness, env))
     try:
+        runner = Adapter(StateStore(_data_dir(args.harness, env)), args.harness,
+                         settings(Path(cwd), args.harness, env))
         if args.command == "status":
             output = runner.status()
         elif args.command == "assign":
