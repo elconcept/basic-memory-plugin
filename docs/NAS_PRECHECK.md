@@ -8,7 +8,7 @@
 
 - Portainer environment `local` (ID 3) udostępnia kontener `/basic-memory-server`, stan: `running`, obraz: `ghcr.io/basicmachines-co/basic-memory:latest`.
 - Kontener uruchamia `basic-memory mcp --transport streamable-http --host 0.0.0.0 --port 8000`; użytkownik procesu skonfigurowany jako `appuser`.
-- Montowania: `/volume2/@docker/volumes/basic-memory_basic-memory-config/_data` → `/home/appuser/.basic-memory` oraz `/volume2/docker/basic-memory-data/knowledge` → `/app/data`, oba RW. To informacja diagnostyczna o dostępnych montowaniach, **bez odczytu ich treści**.
+- Montowania wewnątrz kontenera: `/home/appuser/.basic-memory` (konfiguracja) oraz `/app/data` (wiedza), oba RW. Źródłowe ścieżki hosta NAS celowo pominięto w publicznym repo; nie odczytywano treści montowań.
 - `basic-memory --version` **bez ścieżki absolutnej** zwraca `command not found` w zwykłym `docker exec sh`.
 - `/app/.venv/bin/basic-memory --version` działa i zwraca **1.0.0**. Python systemowy `/usr/local/bin/python3` nie widzi metadanych pakietu; właściwa instalacja jest w `/app/.venv`.
 - `/app/.venv/bin/basic-memory project list --json` zwrócił **jeden projekt: `main`**, `local_path=/basic-memory`, `is_default=true`.
