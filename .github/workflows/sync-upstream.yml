@@ -67,9 +67,8 @@ jobs:
           title: 'chore(upstream): synchronize Basic Memory sources'
           commit-message: 'chore(upstream): update pinned Basic Memory sources'
           body-path: ${{ runner.temp }}/upstream-report.md
+          # During staging, only these paths exist. T04 will add generated
+          # artifact paths after the build pipeline has created them.
           add-paths: |
             vendor/upstream
             config/upstream.lock.json
-            claude
-            openai
-            build-info.json
