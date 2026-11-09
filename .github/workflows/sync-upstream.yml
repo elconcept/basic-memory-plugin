@@ -1,5 +1,10 @@
 name: Basic Memory upstream sync
 
+# Daily: mirror upstream Basic Memory assets and commit them directly to main
+# when tests (and the artifact build, once present) pass. No PR, no review gate.
+# On failure nothing is committed and a single "upstream sync failed" issue is
+# opened or updated.
+
 on:
   schedule:
     - cron: '23 3 * * *'
@@ -7,8 +12,7 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
-  actions: write
+  issues: write
 
 concurrency:
   group: basic-memory-upstream-sync
@@ -19,9 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Checkout plugin source
+      - name: Checkout plugin source (main)
         uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: true
       - name: Checkout upstream main
         uses: actions/checkout@v4
@@ -38,50 +43,63 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sha="$(git -C upstream rev-parse HEAD)"
+          extra=()
+          if test -f config/build.json; then extra=(--build-config config/build.json); fi
           python scripts/sync_upstream.py \
             --source upstream \
             --dest vendor/upstream \
             --lock config/upstream.lock.json \
-            --sha "$sha" \
+            "${extra[@]}" \
+            --sha "$(git -C upstream rev-parse HEAD)" \
             --report "$RUNNER_TEMP/upstream-report.md"
-      - name: Run snapshot tests
+      - name: Run tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
-      - name: Build artifacts when implementation is present
+      - name: Regenerate plugin artifacts (when the generator exists)
         shell: bash
         run: |
           set -euo pipefail
-          if test -f scripts/build.py; then
-            python scripts/build.py --upstream vendor/upstream --out .
-            python scripts/build.py --upstream vendor/upstream --out . --check
-          else
-            echo 'STAGING ONLY: no plugin build generator yet; do not merge as a release.'
+          if ! test -f scripts/build.py; then
+            echo "No build generator yet: committing source snapshot only."
+            exit 0
           fi
-      - name: Open or update a single review PR (never auto-merge)
-        id: upstream_pr
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: sync/upstream
-          base: main
-          delete-branch: true
-          draft: true
-          title: 'chore(upstream): synchronize Basic Memory sources'
-          commit-message: 'chore(upstream): update pinned Basic Memory sources'
-          body-path: ${{ runner.temp }}/upstream-report.md
-          # During staging, only these paths exist. T04 will add generated
-          # artifact paths after the build pipeline has created them.
-          add-paths: |
-            vendor/upstream
-            config/upstream.lock.json
+          python scripts/build.py --upstream vendor/upstream --out . --target claude
+          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M
+          python scripts/build.py --upstream vendor/upstream --out . --target claude --check
+          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
+      - name: Commit and push directly to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          paths=(vendor/upstream config/upstream.lock.json)
+          for p in config/build.json build-info.json claude openai; do
+            test -e "$p" && paths+=("$p")
+          done
+          git add -A -- "${paths[@]}"
+          if git diff --cached --quiet; then
+            echo "No upstream changes."
+            exit 0
+          fi
+          sha="$(git -C upstream rev-parse --short HEAD)"
+          git commit -q -F - <<EOF
+          chore(upstream): sync Basic Memory to ${sha}
 
-      - name: Explicitly dispatch CI for bot-created PR
-        if: ${{ steps.upstream_pr.outputs.pull-request-number != '' }}
+          $(cat "$RUNNER_TEMP/upstream-report.md" 2>/dev/null | head -c 20000)
+          EOF
+          git push origin HEAD:main
+      - name: Report failure as a single issue
+        if: failure()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Bot-created push/PR events do not trigger checks. workflow_dispatch does.
-          gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref sync/upstream
-          echo "Dispatched CI for sync/upstream PR #${{ steps.upstream_pr.outputs.pull-request-number }}"
+          title='upstream sync failed'
+          body="Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Nothing was committed to main."
+          num="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')"
+          if test -n "$num"; then
+            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi
