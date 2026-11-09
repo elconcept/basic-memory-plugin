@@ -1,5 +1,6 @@
 """Generator safety, target separation and determinism — no network calls."""
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -74,12 +75,14 @@ class BuildTests(unittest.TestCase):
         p.write_text(p.read_text() + "\nRemote context should not use LOCAL_SETUP.")
         patch = self.overrides.parent.parent / "patches" / "skills" / "bm-test0" / "claude.json"
         patch.parent.mkdir(parents=True)
-        patch.write_text(json.dumps({"replacements": [{"old": "LOCAL_SETUP", "new": "REMOTE_MCP_ONLY"}]}))
+        original = p.read_bytes()
+        sha = hashlib.sha1(b"blob " + str(len(original)).encode() + b"\0" + original).hexdigest()
+        patch.write_text(json.dumps({"source_blob_sha": sha, "replacements": [{"old": "LOCAL_SETUP", "new": "REMOTE_MCP_ONLY"}]}))
         build(self.source, self.out, self.overrides, self.config, "claude", False, None)
         self.assertIn("REMOTE_MCP_ONLY", (self.out / "claude/skills/bm-test0/SKILL.md").read_text())
         self.assertIn("LOCAL_SETUP", p.read_text())
         p.write_text(p.read_text().replace("LOCAL_SETUP", "something else"))
-        with self.assertRaisesRegex(ValueError, "anchor changed"):
+        with self.assertRaisesRegex(ValueError, "SKILL.md changed"):
             build(self.source, self.out, self.overrides, self.config, "claude", False, None)
 
     def test_schema_name_drift_stops(self):

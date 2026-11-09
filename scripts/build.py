@@ -86,6 +86,15 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
                 document = json.loads(patch_file.read_text(encoding="utf-8"))
                 if not isinstance(document, dict) or not isinstance(document.get("replacements"), list):
                     raise ValueError(f"Invalid patch document: {patch_file}")
+                expected_blob = document.get("source_blob_sha")
+                if not isinstance(expected_blob, str) or not re.fullmatch(r"[0-9a-f]{40}", expected_blob):
+                    raise ValueError(f"Patch missing pinned upstream source blob: {patch_file}")
+                upstream_content = (source / "SKILL.md").read_bytes()
+                current_blob = hashlib.sha1(
+                    b"blob " + str(len(upstream_content)).encode() + b"\0" + upstream_content
+                ).hexdigest()
+                if current_blob != expected_blob:
+                    raise ValueError(f"Patched upstream SKILL.md changed: {name}")
                 for replacement in document["replacements"]:
                     old, new = replacement["old"], replacement["new"]
                     if not old or text.count(old) != 1:
@@ -205,10 +214,6 @@ def build(upstream: Path, out: Path, overrides: Path, config_path: Path, target:
     lock = json.loads(manifest_lock.read_text(encoding="utf-8")) if manifest_lock.exists() else None
     if lock is not None and lock.get("upstream_sha") != cfg["upstream_sha"]:
         raise ValueError("Upstream lock SHA disagrees with build config")
-    for patch in sorted((overrides.parent.parent / "patches" / "skills").rglob("*.json")):
-        metadata = json.loads(patch.read_text(encoding="utf-8"))
-        if metadata.get("upstream_sha") and metadata["upstream_sha"] != cfg["upstream_sha"]:
-            raise ValueError(f"Patch pinned to different upstream SHA: {patch}")
     targets = ("claude", "openai") if target == "all" else (target,)
     if target not in {"claude", "openai", "all"}:
         raise ValueError(f"Invalid build target: {target}")
