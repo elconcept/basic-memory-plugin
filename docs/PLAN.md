@@ -1,10 +1,19 @@
 # Plan wdrożenia: plugin `basic-memory-nas` (Claude + OpenAI)
 
-Wersja planu: 1.1, 2026-11-09
+Wersja planu: 1.1 + zatwierdzone korekty właściciela 2026-11-09
 Status: DO ZATWIERDZENIA (recenzent: GPT). Architektura i zakres zatwierdzone przez recenzenta w v1.0. Ta wersja wprowadza wymagane poprawki wykonawcze.
 Repozytorium docelowe: `github.com/elconcept/basic-memory-plugin` (nowe)
 Upstream: `github.com/basicmachines-co/basic-memory`, gałąź `main` (stan odniesienia: `b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5`, 2026-11-08)
 Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0 na Synology DS1821, stack Portainera `mcp-basic-memory`, ID 18), za Cloudflare Access
+
+## Obowiązujące korekty właściciela (2026-11-09)
+
+- **Licencja całego repo i własnego kodu: AGPL-3.0**, pełny tekst w `LICENSE`. Wcześniejszy wybór MIT nie został uzgodniony i jest cofnięty; trzeba zachować licencje i atrybucję komponentów upstreamu.
+- **Zakres wdrożenia:** nowa instancja *vanilla Basic Memory* na NAS, z domyślnym projektem `main`. Dawne nazwy projektów z innych instalacji są poza zakresem i nie mogą blokować uruchomienia ani diagnostyki.
+- **Codzienna automatyczna synchronizacja i aktualizacja pluginu** po zaliczeniu builda i testów, bez domyślnego ręcznego merge i bez wymuszonych draft PR. Błędy lub zmiany niekompatybilne mają zatrzymywać tylko daną aktualizację i być zgłaszane.
+- **Ochrona gałęzi:** obecna konfiguracja uniemożliwia bezpośredni commit i nadal blokuje PR #3 mimo zielonego checku; to blocker do usunięcia/dostosowania, nie założenie użytkownika.
+
+Ta sekcja zastępuje sprzeczne historyczne fragmenty poniżej. Szczegóły implementacyjne rozwija plan v1.3 na `impl/v1`.
 
 ## Zmiany względem v1.0
 
@@ -12,7 +21,7 @@ Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0 na Synology DS1821, 
 |---|---|---|
 | C1 | Checkpoint zabezpiecza materiał **przed** kompakcją. PreCompact lokalnie wyciąga ograniczony materiał z transkryptu. Model zapisuje go przez MCP po kompakcji. | Pkt 1 |
 | C2 | Maszyna stanów `pending → written → saved` / `failed`. Stan ustala hook `PostToolUse` na podstawie **faktycznej odpowiedzi MCP**, nie deklaracji modelu. Hook `Stop` blokuje zakończenie tury przy niezakończonym checkpoincie (jeden raz). Kolejka ponowień przy SessionStart. Klucz `checkpoint_key` zapobiega duplikatom. | Pkt 2 |
-| C3 | Synchronizacja upstreamu raz dziennie, **zawsze PR**, bez auto-merge czegokolwiek | Pkt 3, pytanie 4 |
+| C3 | Synchronizacja upstreamu raz dziennie, **zawsze PR**, z automatyczną integracją po zaliczeniu CI | Pkt 3, pytanie 4 |
 | C4 | Rozpoznanie możliwości claude.ai i OpenAI przeniesione do F0 (plugin sondujący) | Pkt 4 |
 | C5 | Audyt i czyszczenie starych źródeł połączenia w Codex i Claude Code, zawsze z kopią zapasową | Pkt 5 |
 | C6 | Prace na gałęzi `impl/v1`. `main` wyłącznie po pełnej walidacji. Testy negatywne w `pytest`. | Pkt 6 |
@@ -30,7 +39,7 @@ Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0 na Synology DS1821, 
 3. Bramki weryfikacyjne (G0–G6) mają zdefiniowane wyniki. Wynik spoza opisanych wariantów oznacza **STOP i zgłoszenie** stanu faktycznego użytkownikowi. Niczego nie improwizuj.
 4. Zakazy bezwzględne są w sekcji 12.
 5. Pracuj na gałęzi `impl/v1`. Commit message: `<faza>: <co>`. Merge do `main` wolno zrobić wyłącznie w punktach oznaczonych **[MERGE]**, po zielonym CI.
-6. Wynik każdej bramki zapisuj w `docs/VERIFICATION.md`: data, bramka, wynik, dowód. W dowodach nigdy nie umieszczaj wartości zmiennych środowiskowych, tokenów, nagłówków autoryzacji ani treści notatek z projektu `legal`.
+6. Wynik każdej bramki zapisuj w `docs/VERIFICATION.md`: data, bramka, wynik, dowód. W dowodach nigdy nie umieszczaj wartości zmiennych środowiskowych, tokenów, nagłówków autoryzacji ani treści prywatnych notatek.
 
 ---
 
@@ -59,8 +68,8 @@ Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0 na Synology DS1821, 
   - widoczny w `bm-status`.
 
   Cicha utrata jest niedopuszczalna.
-- **N7.** Zmiany z upstreamu trafiają wyłącznie przez PR z przeglądem. Brak auto-merge.
-- **N8.** Projekt pamięci zawsze jawny: `primaryProject` z ustawień, a przy braku pytanie do użytkownika. Projektów `legal` i `main` nie wolno mieszać. Hook nigdy nie przyjmuje projektu domyślnego.
+- **N7.** Zmiany z upstreamu trafiają wyłącznie przez PR z przeglądem. Automatyczny merge po zaliczeniu CI.
+- **N8.** Projekt pamięci zawsze jawny: `primaryProject` z ustawień, a przy braku pytanie do użytkownika. Użyj serwerowego projektu domyślnego `main` i nie wymagaj historycznych projektów. Hook nigdy nie przyjmuje projektu domyślnego.
 - **N9.** Niczego nie usuwasz z konfiguracji użytkownika bez uprzedniej kopii do `~/.bm-migration-backup/<YYYYmmdd-HHMMSS>/` z zachowaniem ścieżek względnych. Lista przeniesionych elementów trafia do VERIFICATION.md.
 
 ---
@@ -117,9 +126,9 @@ Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0 na Synology DS1821, 
   6. **`SessionStart` (każde źródło):** wpisy inne niż `saved` z tego samego `primaryProject` trafiają do polecenia ponowienia.
   7. **Retencja:** materiał usuwany 7 dni po `saved`. Wpisy niezakończone nie są usuwane automatycznie. Po 30 dniach są zgłaszane jako `stale` przy każdym SessionStart, do decyzji użytkownika.
 - **D6.** Wersjonowanie: wspólna wersja `1.0.N`, `N` rośnie przy zmianie zawartości generowanej. SHA upstreamu trafia do `build-info.json`.
-- **D7.** Repozytorium publiczne (MIT plus atrybucja), bez sekretów.
+- **D7.** Repozytorium publiczne (AGPL-3.0 plus atrybucja), bez sekretów.
 
-Odrzucone, nie wracać do nich: shim `/proxy`, SSH/`docker exec` z hooka, token serwisowy w hookach, `mcp_tool` na starcie sesji, automatyczny fallback na konektor konta, auto-merge.
+Odrzucone, nie wracać do nich: shim `/proxy`, SSH/`docker exec` z hooka, token serwisowy w hookach, `mcp_tool` na starcie sesji, automatyczny fallback na konektor konta, manual merge każdej aktualizacji.
 
 ---
 
@@ -189,7 +198,7 @@ Wszystko tylko do odczytu. W VERIFICATION.md zapisuj wyłącznie nazwy zmiennych
 3. **Dostęp do CLI:** exec `basic-memory --version`:
    - POST `/containers/{id}/exec` z `{"Cmd":["basic-memory","--version"],"AttachStdout":true,"AttachStderr":true,"Tty":true}`;
    - POST `/exec/{execId}/start` z `{"Detach":false,"Tty":true}`.
-4. **Dostęp do bazy:** exec `basic-memory project list --json`, albo równoważne polecenie listy projektów z `--help`. Lista projektów musi zgadzać się z `bm_project` przez MCP (`main`, `legal`, `model-memory`). To dowód, że CLI widzi bazę serwera, a nie nowe, puste środowisko.
+4. **Dostęp do bazy:** exec `basic-memory project list --json`, albo równoważne polecenie listy projektów z `--help`. Lista projektów musi zgadzać się z `bm_project` przez MCP (`main`). To dowód, że CLI widzi bazę serwera, a nie nowe, puste środowisko.
 5. **Dostęp do plików:** exec `ls /app/data` (same nazwy katalogów).
 
 **Wyniki:**
@@ -350,7 +359,7 @@ Build z wartością `null` w polu wymaganym dla danego artefaktu kończy się b�
   "description": "Basic Memory (self-hosted, bm.xlap.pl): skills, MCP connection and credential-free continuity hooks.",
   "author": { "name": "elconcept" },
   "repository": "https://github.com/elconcept/basic-memory-plugin",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "keywords": ["memory", "basic-memory", "mcp", "self-hosted"]
 }
 ```
@@ -507,7 +516,7 @@ Dla Codex wzorzec to `load_codex_settings` w upstreamowym `hook.py`.
 **Teksty.** Wartości z wpisu stanu podstawia skrypt; teksty są po angielsku, jak upstream.
 - `<TEKST_CHECKPOINT>`: „Basic Memory checkpoint REQUIRED (context was just compacted). Before any other work, use the `basic-memory-nas:bm-checkpoint` skill in hook mode with: checkpoint_key={ck}, material file={material}, project={project or 'NOT SET – ask the user which Basic Memory project to use; never assume'}, folder={capture_folder}. The material file holds pre-compaction content that may be missing from your current context; read it in full. Then report in one line: `Checkpoint saved: <note reference>` or `Checkpoint NOT saved: <reason>`.”
 - `<TEKST_RETRY>`: „Basic Memory has {n} unfinished checkpoint(s) from earlier sessions: {lista: ck, status, data, project, material}. Tell the user in one line, then complete each with `basic-memory-nas:bm-checkpoint` in hook mode, unless the user says to skip.”
-- `<TEKST_ORIENT>`: „Basic Memory (NAS) is available. Before the first substantive task, use `basic-memory-nas:bm-orient` for project {primaryProject}. If no project is configured, ask the user which project to use (never mix `legal` and `main`). Keep it brief; if the tools are unavailable, say so in one sentence.”
+- `<TEKST_ORIENT>`: „Basic Memory (NAS) is available. Before the first substantive task, use `basic-memory-nas:bm-orient` for project {primaryProject}. If no project is configured, ask the user which project to use (use the active server default project `main`). Keep it brief; if the tools are unavailable, say so in one sentence.”
 - `<TEKST_STOP>`: „Basic Memory checkpoint {ck} is {status}. Finish it now with `basic-memory-nas:bm-checkpoint` in hook mode (write, then read back), or tell the user explicitly: `Checkpoint NOT saved: <reason>`.”
 
 ### 7.5. Format notatki checkpointu
@@ -604,8 +613,8 @@ Wyzwalacze: `schedule: cron "23 3 * * *"` (raz dziennie) i `workflow_dispatch`. 
    - lista zmienionych skilli z liczbą zmienionych linii;
    - zmiany hashy nadpisanych skilli jako ostrzeżenia;
    - zmiany w hookach i manifestach upstreamu (`plugins/claude-code/hooks/**`, `plugins/codex/hooks/**`) jako sygnał do ręcznej oceny, mimo że nie są kopiowane.
-5. Etykieta `needs-review`. **Brak auto-merge** (N7).
-6. Ochrona `main`: wymagane zielone `ci.yml` i ręczny merge.
+5. Etykieta `needs-review`. **Automatyczny merge po zaliczeniu CI** (N7).
+6. Ochrona `main`: wymagane zielone `ci.yml` i automatyczny merge.
 
 ---
 
@@ -625,7 +634,7 @@ Wykonawca tylko sprawdza (odczyt przez Admin Tools → `mcp_cloudflare_execute`)
 ## 11. Fazy wdrożenia
 
 ### F0. Repo, audyt i sonda platform
-1. Utwórz publiczne repo z `LICENSE`, `README.md`, `docs/PLAN.md` (ten dokument) i `docs/VERIFICATION.md`. Gałąź `impl/v1`. Ochrona `main` (wymagany CI, ręczny merge).
+1. Utwórz publiczne repo z `LICENSE`, `README.md`, `docs/PLAN.md` (ten dokument) i `docs/VERIFICATION.md`. Gałąź `impl/v1`. Ochrona `main` (wymagany CI, automatyczna integracja po testach).
 2. **Audyt istniejących źródeł**, tylko odczyt, wynik w VERIFICATION.md:
    - **MacBook, Claude Code:**
      - `claude plugin list`;
@@ -701,7 +710,7 @@ Na MacBooku i w obu kontenerach holyclaude:
    W `agents-sync` usuń linkowanie tych skilli. Każdy przeniesiony element wpisz do VERIFICATION.md.
 4. Restart. `/plugin`: `basic-memory-nas` raz. `/mcp`: jeden serwer Basic Memory, *connected*. Nazwy narzędzi zgodne z `claude_tool_prefix`.
 5. `basicMemory.primaryProject` przez `/basic-memory-nas:bm-setup`:
-   - holyclaude-legal: `legal`;
+   - holyclaude: serwerowy domyślny projekt `main`;
    - główny holyclaude: `main`;
    - MacBook: według użytkownika.
 6. Test potoku D5 (MacBook):
@@ -752,7 +761,7 @@ Test skilli i MCP jak w F4 pkt 2, potem G5.
 
 ### F10. Test ciągłości pamięci (kryterium odbioru)
 
-Wykonaj na MacBooku w Claude Code, a następnie w Codex (jeśli F8 zaliczone). Projekt `main`, folder `tests/continuity`. **Nie używaj projektu `legal`.**
+Wykonaj na MacBooku w Claude Code, a następnie w Codex (jeśli F8 zaliczone). Projekt `main`, folder `tests/continuity`. **Nie wymagaj projektów z poprzednich instalacji.**
 1. Nowa sesja. Przeprowadź analizę testową (temat neutralny, np. wybór formatu kopii zapasowej). Zapisz w rozmowie 6 decyzji, każdą z unikalnym znacznikiem `CT-<data>-D1` … `D6` i krótkim uzasadnieniem.
    - D1 i D2 podaj **na początku** sesji, potem wygeneruj długi materiał (np. poproś o szczegółowe porównania), żeby D1 i D2 znalazły się daleko od końca.
 2. `/compact`, a gdy da się wywołać, także kompakcja automatyczna.
@@ -798,9 +807,9 @@ Wykonaj na MacBooku w Claude Code, a następnie w Codex (jeśli F8 zaliczone). P
 | Kwestia | Decyzja |
 |---|---|
 | Fallback G1 na konektor konta | Brak automatycznego fallbacku. STOP i osobna decyzja. |
-| Domyślny projekt | Brak. Jawny `primaryProject` albo pytanie. `legal` i `main` rozdzielone. |
+| Domyślny projekt | Brak. Jawny `primaryProject` albo pytanie. `main` jako serwerowy projekt domyślny. |
 | `memory-literary-analysis` | Wykluczony. 24 skille. |
-| Sync upstreamu | Raz dziennie, zawsze PR, bez auto-merge |
+| Sync upstreamu | Raz dziennie, automatyczna aktualizacja po zielonym CI |
 
 ---
 
