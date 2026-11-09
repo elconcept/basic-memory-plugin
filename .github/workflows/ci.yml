@@ -30,3 +30,22 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout pinned upstream source for a real-world smoke test
+        uses: actions/checkout@v4
+        with:
+          repository: basicmachines-co/basic-memory
+          ref: b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5
+          path: upstream
+          persist-credentials: false
+      - name: Verify worker against real upstream source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/sync_upstream.py \
+            --source upstream \
+            --dest "$RUNNER_TEMP/bm-source-snapshot" \
+            --lock "$RUNNER_TEMP/bm-upstream-lock.json" \
+            --sha "$(git -C upstream rev-parse HEAD)" \
+            --report "$RUNNER_TEMP/bm-upstream-report.md"
+          python -c 'import json,os;from pathlib import Path;p=Path(os.environ["RUNNER_TEMP"])/"bm-upstream-lock.json";d=json.loads(p.read_text());assert d["file_count"] >= 35,d'
