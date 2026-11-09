@@ -231,6 +231,89 @@ class StateStore:
             and x["status"] in UNFINISHED
         ][:limit]
 
+    def register_session(self, session_id: str, cwd: str, transcript_path: str | None,
+                         project: str | None) -> dict:
+        if not session_id or not cwd:
+            raise CheckpointError("Session ID and cwd are required")
+        with self.transaction() as state:
+            session = state["open_sessions"].get(session_id)
+            if session is None:
+                session = {
+                    "session_id": session_id, "cwd": cwd,
+                    "transcript_path": transcript_path, "project": project,
+                    "started": ISO(), "last_seen": ISO(), "ended": False,
+                    "last_capture_offset": 0,
+                }
+                state["open_sessions"][session_id] = session
+            else:
+                # Prevent a second agent from silently reassigning the session.
+                if session["project"] != project and session["project"] is not None:
+                    raise CheckpointError("Session project conflict")
+                session["last_seen"] = ISO()
+                if transcript_path:
+                    session["transcript_path"] = transcript_path
+            return dict(session)
+
+    def get(self, key: str) -> dict:
+        state = self.snapshot()
+        entry = state["checkpoints"].get(key)
+        if entry is None:
+            raise CheckpointError("Unknown checkpoint")
+        return dict(entry)
+
+    def session(self, session_id: str) -> dict | None:
+        entry = self.snapshot()["open_sessions"].get(session_id)
+        return dict(entry) if entry else None
+
+    def set_capture(self, key: str, capture: str, complete: bool,
+                    material: list[str], next_offset: int | None = None) -> dict:
+        if capture != "ok" and capture != "partial" and not capture.startswith("failed:"):
+            raise CheckpointError("Invalid capture status")
+        if not isinstance(material, list) or not all(isinstance(p, str) for p in material):
+            raise CheckpointError("Invalid material paths")
+        with self.transaction() as state:
+            entry = state["checkpoints"].get(key)
+            if entry is None or entry["status"] != "pending":
+                raise CheckpointError("Checkpoint not pending")
+            entry["capture"] = capture
+            entry["complete"] = bool(complete)
+            entry["material"] = material
+            entry["updated"] = ISO()
+            session = state["open_sessions"].get(entry["session_id"])
+            if session is not None and next_offset is not None and capture in {"ok", "partial"}:
+                session["last_capture_offset"] = max(session.get("last_capture_offset", 0), next_offset)
+                session["last_seen"] = ISO()
+            return dict(entry)
+
+    def end_session(self, session_id: str) -> None:
+        with self.transaction() as state:
+            session = state["open_sessions"].get(session_id)
+            if session is not None:
+                session["ended"] = True
+                session["last_seen"] = ISO()
+
+    def pending_for_session(self, session_id: str) -> list[dict]:
+        entries = self.snapshot()["checkpoints"].values()
+        return sorted([dict(e) for e in entries if e["session_id"] == session_id
+                       and e["status"] in UNFINISHED],
+                      key=lambda e: (e["created"], e["seq"]))
+
+    def unassigned(self, limit: int = 5) -> list[dict]:
+        entries = self.snapshot()["checkpoints"].values()
+        return sorted([dict(e) for e in entries if e.get("project") is None
+                       and e["status"] in UNFINISHED],
+                      key=lambda e: (e["created"], e["seq"]))[:limit]
+
+    def terminal_by_user(self, key: str, action: str) -> dict:
+        if action not in {"saved", "dismissed"}:
+            raise CheckpointError("Invalid user action")
+        with self.transaction() as state:
+            entry = state["checkpoints"].get(key)
+            if entry is None or entry["status"] in {"saved", "dismissed"}:
+                raise CheckpointError("Checkpoint already terminal or unknown")
+            self._history(entry, action, "user-confirm")
+            return dict(entry)
+
     def status(self) -> dict:
         state = self.snapshot()
         counts: dict[str, int] = {}
