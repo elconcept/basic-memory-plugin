@@ -1,7 +1,7 @@
 {
+  "file_count": 85,
+  "integration_status": "source-staging-until-artifact-build-is-tested",
+  "snapshot_digest": "1bab9e589a90a855f12e8050af85bf61af3555ba2525f5f3357d92dd61108eb4",
   "source_repo": "basicmachines-co/basic-memory",
-  "upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5",
-  "snapshot_digest": null,
-  "file_count": 0,
-  "integration_status": "source-staging-until-artifact-build-is-tested"
+  "upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5"
 }
