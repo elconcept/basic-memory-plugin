@@ -1,76 +1,90 @@
 # Plan wdrożenia: plugin `basic-memory-nas` (Claude + OpenAI)
 
-Wersja planu: 1.1 + zatwierdzone korekty właściciela 2026-11-09
-Status: DO ZATWIERDZENIA (recenzent: GPT). Architektura i zakres zatwierdzone przez recenzenta w v1.0. Ta wersja wprowadza wymagane poprawki wykonawcze.
-Repozytorium docelowe: `github.com/elconcept/basic-memory-plugin` (nowe)
-Upstream: `github.com/basicmachines-co/basic-memory`, gałąź `main` (stan odniesienia: `b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5`, 2026-11-08)
-Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0 na Synology DS1821, stack Portainera `mcp-basic-memory`, ID 18), za Cloudflare Access
+Wersja planu: 1.3.1, 2026-11-09 — decyzje właściciela mają pierwszeństwo przed wcześniejszymi założeniami
+Status: DO REALIZACJI W GRANICACH BRAMEK. Kierunek zatwierdzony przez recenzenta GPT. Uwagi R01–R13 ([recenzja GPT](REVIEW_GPT_2026-11-09.md)) i draft v1.2 GPT wprowadzone; odpowiedź z uzasadnieniem w [REVIEW_CLAUDE_2026-11-09.md](REVIEW_CLAUDE_2026-11-09.md). Ostatnie zatwierdzenie należy do użytkownika.
+Repozytorium: `github.com/elconcept/basic-memory-plugin` (publiczne), gałąź robocza `impl/v1`
+Upstream: `github.com/basicmachines-co/basic-memory`, gałąź `main`. Pin w `config/upstream.lock.json` (stan odniesienia: `b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5`, 2026-11-08)
+Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0.0 na Synology DS1821, kontener `basic-memory-server`, stack Portainera `mcp-basic-memory`), za Cloudflare Access
 
-## Obowiązujące korekty właściciela (2026-11-09)
+## Decyzje nadrzędne właściciela (2026-11-09)
 
-- **Licencja całego repo i własnego kodu: AGPL-3.0**, pełny tekst w `LICENSE`. Wcześniejszy wybór MIT nie został uzgodniony i jest cofnięty; trzeba zachować licencje i atrybucję komponentów upstreamu.
-- **Zakres wdrożenia:** nowa instancja *vanilla Basic Memory* na NAS, z domyślnym projektem `main`. Dawne nazwy projektów z innych instalacji są poza zakresem i nie mogą blokować uruchomienia ani diagnostyki.
-- **Codzienna automatyczna synchronizacja i aktualizacja pluginu** po zaliczeniu builda i testów, bez domyślnego ręcznego merge i bez wymuszonych draft PR. Błędy lub zmiany niekompatybilne mają zatrzymywać tylko daną aktualizację i być zgłaszane.
-- **Ochrona gałęzi:** obecna konfiguracja uniemożliwia bezpośredni commit i nadal blokuje PR #3 mimo zielonego checku; to blocker do usunięcia/dostosowania, nie założenie użytkownika.
+1. **AGPL-3.0:** publiczne repozytorium i kod własny pluginu są na licencji AGPL, zgodnej z upstreamem. Do publikowanych artefaktów należy dołączyć `LICENSE` oraz zachować oryginalne oznaczenia licencyjne komponentów.
+2. **Vanilla:** dotyczy nowego, standardowego Basic Memory na NAS. Projekt domyślny `main` jest prawidłowy; jakiekolwiek projekty z poprzednich instalacji są poza zakresem.
+3. **Auto-update:** worker ma automatycznie integrować nowe commity upstreamu po zaliczeniu testów, bez ręcznego zatwierdzania każdej rutynowej aktualizacji. Niepowodzenie testów musi blokować daną aktualizację i być zgłoszone. Obecne ograniczenia branch protection są do naprawienia, nie są życzeniem użytkownika.
+4. **Brak zmian w danych NAS:** żadnych importów, tworzenia historycznych projektów ani modyfikacji bazy w ramach tej korekty.
+5. **Bez zaplanowanej konserwacji:** żadnych harmonogramów, `cloudcli-cron`, okresowych zadań `memory-reflect/curate/defrag/lifecycle` w holyclaude ani innych „okresów porządkowania”. Nie był to pomysł użytkownika i nie został zaakceptowany. Skille upstreamu są w pluginie i działają wyłącznie na żądanie użytkownika.
+6. **Wdrożenie od razu:** plugin jest podpinany do claude.ai i chatgpt.com teraz, bez fazy sondy (`bm-probe`). Bramki G1/G2 weryfikują rzeczywisty plugin na żywo; hooki i test ciągłości (F1, F10) dochodzą kolejnymi wersjami pluginu.
 
-Ta sekcja zastępuje sprzeczne historyczne fragmenty poniżej. Szczegóły implementacyjne rozwija plan v1.3 na `impl/v1`.
+Niniejsze decyzje mają pierwszeństwo przed starszymi sformułowaniami planu i dokumentami recenzji.
 
-## Zmiany względem v1.0
+## Zmiany względem v1.1
 
-| # | Zmiana | Powód (recenzja GPT) |
+| # | Zmiana | Źródło |
 |---|---|---|
-| C1 | Checkpoint zabezpiecza materiał **przed** kompakcją. PreCompact lokalnie wyciąga ograniczony materiał z transkryptu. Model zapisuje go przez MCP po kompakcji. | Pkt 1 |
-| C2 | Maszyna stanów `pending → written → saved` / `failed`. Stan ustala hook `PostToolUse` na podstawie **faktycznej odpowiedzi MCP**, nie deklaracji modelu. Hook `Stop` blokuje zakończenie tury przy niezakończonym checkpoincie (jeden raz). Kolejka ponowień przy SessionStart. Klucz `checkpoint_key` zapobiega duplikatom. | Pkt 2 |
-| C3 | Synchronizacja upstreamu raz dziennie, **zawsze PR**, z automatyczną integracją po zaliczeniu CI | Pkt 3, pytanie 4 |
-| C4 | Rozpoznanie możliwości claude.ai i OpenAI przeniesione do F0 (plugin sondujący) | Pkt 4 |
-| C5 | Audyt i czyszczenie starych źródeł połączenia w Codex i Claude Code, zawsze z kopią zapasową | Pkt 5 |
-| C6 | Prace na gałęzi `impl/v1`. `main` wyłącznie po pełnej walidacji. Testy negatywne w `pytest`. | Pkt 6 |
-| C7 | Brak automatycznego fallbacku G1: przy niepowodzeniu STOP i decyzja użytkownika | Pytanie 1 |
-| C8 | Brak domyślnego projektu: jawny `primaryProject`, a w razie braku pytanie | Pytanie 2 |
-| C9 | Redakcja `Config.Env` w G4. Skan sekretów oparty na wzorcach poświadczeń i `gitleaks`. | Drobne |
-| C10 | Kryterium odbioru: test ciągłości pamięci (F10) | Decyzja końcowa |
+| V1 | Cel rozszerzony z „przeżyć kompakcję” na `recall → capture → consolidate`. Decyzje utrwalane w trakcie pracy upstreamowymi skillami; checkpoint jest siatką bezpieczeństwa, nie jedynym mechanizmem. | draft A1, R04, R07 |
+| V2 | `saved` wyłącznie po weryfikacji przez hook (ta sama notatka, ten sam projekt, linia `checkpoint_key`) albo po `confirm` użytkownika z terminala. `mark` usunięty, deklaracja modelu daje najwyżej `reported_by_model`. | R01, R03 |
+| V3 | Routing zgodny z vanilla: zwykła instancja używa projektu domyślnego `main`; pytanie tylko gdy brak pewnej konfiguracji. | korekta właściciela |
+| V4 | Materiał dzielony na części zamiast ucinania; sekcje „Decision candidates” i „Artifacts”; jawne `complete: false`. | R04 |
+| V5 | Pole `capture` (ok/partial/failed:powód) i siatka `SessionStart(compact)` bez wpisu. | R05 |
+| V6 | `SessionEnd` i odzyskiwanie sesji przerwanych bez kompakcji. | R07 |
+| V7 | `PostToolUseFailure`. | R10 |
+| V8 | Build per cel (`--target`), natywne `bm-*` osobno dla Claude i Codex, nadpisania i patche per cel. | R08, R09 |
+| V9 | Diagnostyka G4 bez przekazywania `Config.Env`; CLI i MCP instancji vanilla powinny wskazywać ten sam domyślny projekt `main`. | R06, korekta właściciela |
+| V10 | G0-O z ośmioma osobnymi wynikami; §10 z testami OAuth od zewnątrz i kontrolą obejścia Cloudflare. | R11, R12 |
+| V11 | Aktualizacje upstreamu wdrażane automatycznie po pomyślnych testach (PR może być etapem technicznym). Błędy raportowane bez cichego sukcesu. | korekta właściciela |
+| V12 | Licencja repozytorium: AGPL-3.0; zachować notices i odrębne licencje elementów upstreamu. | korekta właściciela |
+| V14 | F10 rozszerzony: wariant z kompakcją (A), bez kompakcji (B), dwie kompakcje (C); raport etapowy. | R07, R13 |
+| V15 | Jedna numeracja: fazy F, bramki G. Zadania T00–T10 z draftu zmapowane w §11.0. | K4 |
+| V16 | Korekta 1.2.1: usunięte wszystkie założenia o projektach historyczne projekty. To wewnętrzne projekty wcześniejszej, nieudanej instalacji, bez związku z tym wdrożeniem vanilla. NAS ma jeden projekt `main` i to jest stan prawidłowy. | użytkownik |
 
 ---
 
 ## 0. Instrukcje dla modelu wykonawczego
 
-1. Wykonuj fazy w kolejności F0 → F10. Nie przeskakuj faz.
+1. Wykonuj fazy w kolejności z §11. Kolejność F1 i F2 może się przeplatać; reszty nie przeskakuj.
 2. Każda faza kończy się **kryterium akceptacji**. Bez spełnienia kryterium nie przechodzisz dalej.
 3. Bramki weryfikacyjne (G0–G6) mają zdefiniowane wyniki. Wynik spoza opisanych wariantów oznacza **STOP i zgłoszenie** stanu faktycznego użytkownikowi. Niczego nie improwizuj.
 4. Zakazy bezwzględne są w sekcji 12.
-5. Pracuj na gałęzi `impl/v1`. Commit message: `<faza>: <co>`. Merge do `main` wolno zrobić wyłącznie w punktach oznaczonych **[MERGE]**, po zielonym CI.
-6. Wynik każdej bramki zapisuj w `docs/VERIFICATION.md`: data, bramka, wynik, dowód. W dowodach nigdy nie umieszczaj wartości zmiennych środowiskowych, tokenów, nagłówków autoryzacji ani treści prywatnych notatek.
+5. Pracuj na gałęzi `impl/v1`. Jeden commit na zakończone zadanie, message `<faza>: <co>`. Merge do `main`:
+   - w punktach **[MERGE]**, po zielonym CI;
+6. Wynik każdej bramki zapisuj w `docs/VERIFICATION.md`: data, bramka, wynik, dowód. Postęp zadań w `docs/IMPLEMENTATION_LOG.md`. W dowodach nigdy nie umieszczaj wartości zmiennych środowiskowych, tokenów, nagłówków autoryzacji ani ścieżek hosta NAS.
+7. Rozróżniaj stany dowodu: **SOURCE-VERIFIED** (jest w upstream@pin), **NAS-VERIFIED**, **CLIENT-VERIFIED** (na danej powierzchni), **GH-ACTIVE** (workflow na `main` z udanym przebiegiem). „Skonfigurowane” ≠ „działa”.
 
 ---
 
 ## 1. Cel i niezmienniki
 
-**Cel:** jeden plugin, utrzymywany w jednym repozytorium, dostarcza skille Basic Memory, połączenie MCP do `bm.xlap.pl/mcp` i hooki ciągłości pamięci.
+**Cel:** jeden plugin, utrzymywany w jednym repozytorium, dostarcza skille Basic Memory, połączenie MCP do `bm.xlap.pl/mcp` i hooki ciągłości pamięci. Pamięć działa w cyklu:
+- **recall:** orientacja na starcie (`bm-orient`, `memory-continue`);
+- **capture:** utrwalanie decyzji w trakcie pracy (`bm-decide`, `bm-remember`, `memory-capture`) i checkpoint jako siatka bezpieczeństwa (kompakcja, koniec sesji, awaria);
+
+Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (dystrybucja skilli, routing projektu, hooki), GitHub Actions (synchronizacja upstreamu, CI).
 
 | Powierzchnia | Jak dostaje plugin | Gdzie autoryzacja MCP |
 |---|---|---|
 | claude.ai (web), Claude Desktop (czat) | instalacja z marketplace'u GitHub w claude.ai | claude.ai (OAuth Cloudflare) |
 | Claude Cowork | konto claude.ai | claude.ai |
 | Claude Code (MacBook, holyclaude, sesje chmurowe) | synchronizacja z konta claude.ai | dziedziczona z claude.ai (G1) |
-| chatgpt.com | mechanizm ustalony w G0 | chatgpt.com (OAuth Cloudflare) |
-| Codex (CLI/desktop, w tym holyclaude) | mechanizm ustalony w G0/G3 | dziedziczona z chatgpt.com (G3) |
+| chatgpt.com | mechanizm ustalony w G0-O | chatgpt.com (OAuth Cloudflare) |
+| Codex (CLI/desktop, w tym holyclaude) | mechanizm ustalony w G0-O/G3 | dziedziczona z chatgpt.com (G0-O) |
 
 **Niezmienniki:**
 
 - **N1.** Autoryzacja MCP odbywa się wyłącznie w claude.ai i chatgpt.com. Claude Code, Codex i holyclaude nie przechodzą własnego OAuth i nie trzymają sekretów do `bm.xlap.pl`.
-- **N2.** Żaden sekret nie trafia do repozytorium, manifestów, dziennika weryfikacji, PR ani issue.
+- **N2.** Żaden sekret nie trafia do repozytorium (także do historii git), manifestów, dziennika weryfikacji, PR, issue, logów CI ani **wyniku narzędzia widzianego przez model**.
 - **N3.** Każdy skill Basic Memory występuje na danej powierzchni dokładnie raz. Nie ma zipów skilli, kopii w `~/.claude/skills` i `~/.agents/skills`, `npx skills add`, oficjalnych pluginów `basic-memory@basicmachines-co` ani `codex@basic-memory`.
 - **N4.** Na danej powierzchni jest dokładnie jedno połączenie MCP do Basic Memory i dokładnie jeden zestaw narzędzi `bm_*`.
-- **N5.** Hooki nie wykonują połączeń sieciowych i nie używają poświadczeń. Wolno im czytać lokalny transkrypt i zapisywać lokalny stan oraz materiał checkpointu, z ograniczeniami z sekcji 7.4.
-- **N6.** Stan każdego wymaganego checkpointu jest ustalany na podstawie odpowiedzi MCP (`PostToolUse`). Checkpoint niezakończony (`pending`, `written`, `failed`) jest:
-  - zgłaszany modelowi w tej samej sesji (`Stop`);
-  - ponawiany w kolejnej sesji (`SessionStart`);
+- **N5.** Hooki nie wykonują połączeń sieciowych i nie używają poświadczeń. Wolno im czytać lokalny transkrypt oraz zapisywać lokalny stan i materiał checkpointu (sekcja 7).
+- **N6.** Stan `saved` powstaje **wyłącznie** na dwa sposoby: weryfikacja odpowiedzi MCP przez hook (`PostToolUse`, reguły 7.4) albo `confirm` wykonane przez użytkownika w terminalu. Deklaracja modelu nigdy nie daje `saved`. Każdy wpis inny niż `saved`/`dismissed` jest:
+  - zgłaszany modelowi w tej samej sesji (`Stop`, jeden raz na wpis);
+  - ponawiany w kolejnej sesji tego samego projektu (`SessionStart`);
   - widoczny w `bm-status`.
 
-  Cicha utrata jest niedopuszczalna.
-- **N7.** Zmiany z upstreamu trafiają wyłącznie przez PR z przeglądem. Automatyczny merge po zaliczeniu CI.
-- **N8.** Projekt pamięci zawsze jawny: `primaryProject` z ustawień, a przy braku pytanie do użytkownika. Użyj serwerowego projektu domyślnego `main` i nie wymagaj historycznych projektów. Hook nigdy nie przyjmuje projektu domyślnego.
+  Cicha utrata jest niedopuszczalna. Brak materiału lub błąd przechwycenia to jawny stan (`capture: failed:…`), nie cisza.
+- **N7.** Automatyczne monitorowanie i aktualizowanie upstreamu po pomyślnej walidacji; brak obowiązkowego ręcznego merge, wymuszonego draft lub domyślnego no-auto-merge. Błąd builda/CI blokuje daną aktualizację i tworzy raport.
+- **N8.** Świeża instancja vanilla ma domyślny projekt `main`, który jest prawidłowy. Historyczne projekty innych instancji nie są wymagane ani weryfikowane. Dla jawnie skonfigurowanych dodatkowych projektów zachowaj separację.
 - **N9.** Niczego nie usuwasz z konfiguracji użytkownika bez uprzedniej kopii do `~/.bm-migration-backup/<YYYYmmdd-HHMMSS>/` z zachowaniem ścieżek względnych. Lista przeniesionych elementów trafia do VERIFICATION.md.
+- **N10.** Repozytorium i własny kod są na AGPL-3.0; wolno korzystać z upstreamowego kodu AGPL przy zachowaniu obowiązków licencyjnych, oryginalnych notices i informacji o modyfikacjach. Nie kopiować komponentów niepotrzebnych do pluginu.
 
 ---
 
@@ -78,148 +92,161 @@ Ta sekcja zastępuje sprzeczne historyczne fragmenty poniżej. Szczegóły imple
 
 | # | Ustalenie | Źródło | Pewność |
 |---|---|---|---|
-| U1 | Upstream: 20 skilli `memory-*` i 8 `bm-*` (`plugins/claude-code/skills/`) | kod | pewne |
+| U1 | Upstream: 20 skilli `memory-*`, 8 `bm-*` dla Claude (`plugins/claude-code/skills/`) i 8 `bm-*` dla Codex (`plugins/codex/skills/`) | kod @b7d4006, `FEATURE_MATRIX.md` | pewne |
 | U2 | `memory-ci-capture`: `metadata.internal: true` | kod | pewne |
-| U3 | Upstreamowe hooki Claude piszą do lokalnej bazy albo do Cloud `{cloud_host}/proxy`. Self-hosted ma tylko `/proxy/projects`. | `api/app.py`, `mcp/async_client.py` | pewne |
-| U4 | Upstreamowy PreCompact bez transkryptu nic nie zapisuje. Wersja z transkryptem zapisuje tylko pierwszą prośbę i 3 ostatnie wypowiedzi użytkownika po 200 znaków. | `cli/commands/hook.py` | pewne |
-| U5 | Upstreamowy plugin Codex: SessionStart(`compact`) wstrzykuje polecenie, model pisze checkpoint skillem `bm-checkpoint` | `plugins/codex/hooks/hooks.json` | pewne |
-| U6 | Claude Code: hook `mcp_tool` pomijany przy SessionStart na starcie sesji | code.claude.com/docs/en/hooks | pewne |
-| U7 | Hooki Claude Code: `command` w formie exec (`command` + `args`) bez powłoki. SessionStart obsługuje źródło `compact` i `hookSpecificOutput.additionalContext`. | dokumentacja hooków, potwierdzone przez recenzenta | pewne |
-| U8 | `PostToolUse` otrzymuje `tool_name`, `tool_input` i `tool_response`. Narzędzia MCP z pluginu mają nazwę `mcp__plugin_<plugin>_<serwer>__<narzędzie>`. `Stop` otrzymuje `stop_hook_active` i może zablokować zakończenie tury (`decision: "block"`, `reason`). | dokumentacja hooków | pewne co do mechanizmu; faktyczne nazwy narzędzi do potwierdzenia w G1 |
-| U9 | Pluginy z claude.ai synchronizują się do Claude Code (≥ v2.1.273, logowanie kontem, nie kluczem API) | support.claude.com 13837440 | pewne |
+| U3 | Upstreamowe hooki Claude i Codex uruchamiają `uv run --script` i piszą do lokalnego Basic Memory albo do Cloud `/proxy`. Self-hosted ma tylko `/proxy/projects`. | `plugins/*/hooks/hooks.json`, `api/app.py`, `mcp/async_client.py` | pewne |
+| U4 | Upstreamowy PreCompact bez transkryptu nic nie zapisuje; z transkryptem tylko pierwszą prośbę i 3 ostatnie wypowiedzi użytkownika po 200 znaków | `cli/commands/hook.py` | pewne |
+| U5 | Upstreamowy plugin Codex: `SessionStart` (`startup\|resume\|compact`) i `PreCompact` (`manual\|auto`); po kompakcji model pisze checkpoint skillem `bm-checkpoint` | `plugins/codex/hooks/hooks.json` | pewne |
+| U6 | Claude Code: hook `mcp_tool` pomijany przy SessionStart na starcie sesji | dokumentacja hooków | pewne |
+| U7 | Hooki Claude Code: `command` w formie exec (`command` + `args`) bez powłoki. SessionStart obsługuje źródło `compact` i `hookSpecificOutput.additionalContext`. | dokumentacja hooków | pewne |
+| U8 | `PostToolUse` otrzymuje `tool_name`, `tool_input`, `tool_response`; `PostToolUseFailure` otrzymuje dane nieudanego wywołania; `SessionEnd` otrzymuje `reason`; `Stop` otrzymuje `stop_hook_active` i może zablokować turę (`decision: "block"`). Narzędzia MCP z pluginu mają nazwę `mcp__plugin_<plugin>_<serwer>__<narzędzie>`. | dokumentacja hooków | pewne co do mechanizmu; pola i nazwy narzędzi do zapisania jako fixture w G1 |
+| U9 | Pluginy z claude.ai synchronizują się do Claude Code (≥ v2.1.273, logowanie kontem) | support.claude.com 13837440 | pewne |
 | U10 | claude.ai: skille z pluginu działają w czacie, Desktopie i Cowork. Hooki działają tylko w Cowork i Claude Code. | support.claude.com 13837440 | pewne |
 | U11 | Czy zdalny MCP z `.mcp.json` pluginu działa w czacie claude.ai i czy Claude Code dziedziczy autoryzację | brak dokumentacji | **G1** |
-| U12 | OpenAI: format przenośny `plugin.json` + `mcp.json` + `skills/`; mapowanie na zarejestrowane połączenie przez `.app.json` (ID `plugin_asdk_app…`); lokalne marketplace'y w ChatGPT Desktop i Codex | developers.openai.com/plugins/build/plugins | pewne co do mechanizmów |
-| U13 | OpenAI: pełne, zapisywalne MCP opisane dla Business i Enterprise/Edu, ograniczone dla Pro. Synchronizacja ChatGPT → Codex nieudokumentowana. | help.openai.com, learn.chatgpt.com | **G0** |
+| U12 | OpenAI: format przenośny `plugin.json` + `mcp.json` + `skills/`; mapowanie na zarejestrowane połączenie przez `.app.json`; lokalne marketplace'y w ChatGPT Desktop i Codex | developers.openai.com/plugins | pewne co do mechanizmów |
+| U13 | OpenAI: pełne, zapisywalne MCP opisane dla Business i Enterprise/Edu, ograniczone dla Pro. Synchronizacja ChatGPT → Codex nieudokumentowana. | help.openai.com, learn.chatgpt.com | **G0-O** |
 | U14 | OpenAI: hooki pluginu nie działają w chmurowym ChatGPT Work. Instalacja przez web nie wdraża skryptów. W Codex hooki wymagają zatwierdzenia (trust). | learn.chatgpt.com/docs/plugins | pewne |
-| U15 | Admin Tools ma `portainer_docker_proxy` (dowolne wywołanie Docker Engine API). Nie ma dedykowanego exec. | `portal_codemode_search`, 2026-11-09 | pewne |
+| U15 | Admin Tools ma `portainer_docker_proxy` (wywołanie Docker Engine API) z projekcją JMESPath `select`. Nie ma dedykowanego exec. | `portal_codemode_search`, instrukcje serwera Portainer | pewne; obsługa `select` dla `/containers/{id}/json` do potwierdzenia w G4 |
 | U16 | `basic-memory doctor`: `--json`, `--skip-self-test`, `--project/-p` | `doctor.py` | pewne |
-| U17 | Ręczne konektory `bm.xlap.pl` w claude.ai i ChatGPT usunięte przez użytkownika. Do F0/F4 czat claude.ai nie ma dostępu do pamięci. | użytkownik | pewne |
-| U18 | MacBook, Codex: włączony plugin `codex@basic-memory` (MCP przez `uvx`) oraz samodzielny wpis `mcp_servers.basic_memory` → `https://bm.xlap.pl/mcp` | wcześniejszy audyt recenzenta | do potwierdzenia w F0 (audyt) |
+| U17 | Ręczne konektory `bm.xlap.pl` w claude.ai i ChatGPT usunięte przez użytkownika. Do F4 czat claude.ai nie ma dostępu do pamięci. | użytkownik | pewne |
+| U18 | MacBook, Codex: włączony `codex@basic-memory` (MCP przez `uvx`) oraz wpis `mcp_servers.basic_memory` → `https://bm.xlap.pl/mcp` | wcześniejszy audyt | do potwierdzenia w F0 |
+| U19 | Wszystkie 8 `bm-*` różni się między wariantem Claude i Codex (19–414 różniących się linii) | diff @b7d4006 | pewne |
+| U20 | Licencje upstreamu: korzeń AGPL-3.0-or-later; `skills/README.md` oraz `plugin.json` obu pluginów deklarują dodatkowo MIT | kod @b7d4006 | pewne |
+| U21 | Kontener Basic Memory 1.0.0: CLI i MCP widzą wyłącznie projekt `main`. Jest to oczekiwany stan nowej instancji vanilla, nie awaria. | `NAS_PRECHECK.md`, `IMPLEMENTATION_LOG.md` | potwierdzone |
+| U22 | GH: automatyczny sync działa na `main`; CI na PR #3 ma zielony check `validate` (workflow_dispatch), lecz API zwraca `mergeable_state=blocked`. End-to-end automatyczne wdrożenie wymaga naprawy. | GitHub API, 2026-11-09 | potwierdzone |
 
 ---
 
 ## 3. Decyzje architektoniczne
 
-- **D1.** Jedno repo, dwa artefakty generowane: `claude/` i `openai/`.
+- **D1.** Jedno repo, dwa artefakty generowane: `claude/` i `openai/`. Źródło upstreamu: snapshot `vendor/upstream/` utrzymywany przez worker (§9.2).
 - **D2.** Nazwa pluginu `basic-memory-nas` na obu platformach. Klucz serwera MCP: `basic-memory`.
-- **D3.** 24 skille z 28.
+- **D3.** Skille na cel: 16 `memory-*` (wspólne źródło) + 8 natywnych `bm-*` (źródło właściwe dla celu: `plugins/claude-code/skills` albo `plugins/codex/skills`) = 24.
   - Wykluczone: `memory-ci-capture`, `memory-agents`, `memory-quest`, `memory-literary-analysis`.
-  - Nadpisane: `bm-setup`, `bm-status`, `memory-doctor`.
-  - Spatchowane: `bm-checkpoint`, `bm-orient`, `memory-okf`.
+  - Nadpisane (osobno na cel): `bm-setup`, `bm-status`, `memory-doctor`.
+  - Spatchowane (osobno na cel): `bm-checkpoint`, `bm-orient`, `memory-okf`.
+  - Nowy skill upstreamu nie jest ani cicho dodawany, ani cicho pomijany: zmiana liczby → build failuje, PR synchronizacji wymaga decyzji.
 - **D4.** MCP przez plugin z OAuth Cloudflare.
   - Claude: `.mcp.json` z `type: http`, bez nagłówków.
-  - OpenAI: wariant z G0.
+  - OpenAI: wariant z G0-O.
   - Token serwisowy Cloudflare nie jest używany przez plugin.
 - **D5. Potok checkpointu** (bez sieci w hookach):
-  1. **`PreCompact`:** hook odczytuje lokalny transkrypt od ostatniej granicy kompakcji. Zapisuje ograniczony materiał (sekcja 7.4) i wpis stanu `pending` z `checkpoint_key`.
-  2. **`SessionStart(compact)`:** hook wstrzykuje polecenie obowiązkowego checkpointu ze ścieżką materiału i kluczem.
-  3. **Model** (skill `bm-checkpoint`):
-     - czyta materiał;
-     - sprawdza, czy notatka z tym `checkpoint_key` już istnieje (deduplikacja);
-     - zapisuje lub aktualizuje notatkę, łącząc materiał i skompaktowany kontekst;
-     - wykonuje odczyt kontrolny.
-  4. **`PostToolUse`:**
-     - po `bm_write`/`bm_edit` z kluczem w treści: `written` przy odpowiedzi bez błędu, `failed` przy błędzie;
-     - po `bm_read`, gdy odpowiedź zawiera klucz: `saved`.
-  5. **`Stop`:** jeśli w tej sesji istnieje wpis inny niż `saved` i `stop_hook_active` jest fałszywe, hook blokuje zakończenie tury jeden raz z poleceniem dokończenia albo jawnego zgłoszenia niepowodzenia.
-  6. **`SessionStart` (każde źródło):** wpisy inne niż `saved` z tego samego `primaryProject` trafiają do polecenia ponowienia.
-  7. **Retencja:** materiał usuwany 7 dni po `saved`. Wpisy niezakończone nie są usuwane automatycznie. Po 30 dniach są zgłaszane jako `stale` przy każdym SessionStart, do decyzji użytkownika.
-- **D6.** Wersjonowanie: wspólna wersja `1.0.N`, `N` rośnie przy zmianie zawartości generowanej. SHA upstreamu trafia do `build-info.json`.
-- **D7.** Repozytorium publiczne (AGPL-3.0 plus atrybucja), bez sekretów.
+  1. **Wyzwalacze przechwycenia** (lokalnie, materiał + wpis `pending`):
+     - `PreCompact` (`trigger: manual|auto`);
+     - `SessionEnd` (`trigger: session_end`), gdy od ostatniego wpisu tej sesji były ≥ `sessionEndMinTurns` wypowiedzi użytkownika;
+     - `SessionStart` odzyskujący sesję przerwaną bez `SessionEnd` (`trigger: recovered`);
+     - `SessionStart(compact)` bez wpisu dla tej kompakcji (`capture: failed:missing_precompact`, bez materiału).
+  2. **`SessionStart`** wstrzykuje polecenie checkpointu (bieżąca sesja) albo ponowienia (inne sesje tego samego projektu).
+  3. **Model** (skill `bm-checkpoint`, tryb hooka):
+     - czyta wszystkie części materiału;
+     - projekt z polecenia hooka (`primaryProject` albo domyślny projekt serwera);
+     - deduplikacja po `checkpoint_key`; istniejąca notatka → `bm_edit` (dopisanie), brak → `bm_write`;
+     - odczyt kontrolny `bm_read` tej samej notatki.
+  4. **`PostToolUse` / `PostToolUseFailure`** ustalają stan według reguł 7.4 (`written`, `saved`, `failed`).
+  5. **`Stop`:** wpis tej sesji inny niż `saved`/`dismissed`/`reported_by_model` i `stop_hook_active == false` → jednorazowa blokada tury na wpis.
+  6. **Retencja:** materiał usuwany 7 dni po `saved`/`dismissed`. Wpisy niezakończone nie są usuwane; po 30 dniach oznaczane `stale` i zgłaszane do decyzji użytkownika.
+- **D6.** Wersjonowanie: wspólna wersja `1.0.N`, `N` rośnie przy zmianie zawartości generowanej. Pin upstreamu z `config/upstream.lock.json` trafia do `build-info.json`.
+- **D7.** Repozytorium publiczne, własny kod i całość pluginu na AGPL-3.0; zachować licencje komponentów upstreamu, informację o zmianach i atrybucję.
+- **D8.** Bieżące utrwalanie realizują skille upstreamu, bez własnych odpowiedników. Jedyny własny kod wykonywalny w pluginie to `bm_hook.py`, bo upstreamowe hooki wymagają lokalnego Basic Memory (U3, N5).
 
-Odrzucone, nie wracać do nich: shim `/proxy`, SSH/`docker exec` z hooka, token serwisowy w hookach, `mcp_tool` na starcie sesji, automatyczny fallback na konektor konta, manual merge każdej aktualizacji.
+Odrzucone, nie wracać do nich: shim `/proxy`, SSH/`docker exec` z hooka, token serwisowy w hookach, `mcp_tool` na starcie sesji, automatyczny fallback na konektor konta, `saved` z deklaracji modelu, harmonogram DSM, lokalny Basic Memory na MacBooku.
 
 ---
 
 ## 4. Bramki weryfikacyjne
 
-### G0. Sonda platform (F0, przed budową właściwego pluginu)
+### G0. Platformy (na żywo, z docelowym pluginem; decyzja właściciela 6)
 
-Cel: ustalić obsługiwane ścieżki **przed** inwestycją w build. Sonda to minimalne pluginy w gałęzi `probe` tego samego repo:
-- `probe/claude/`: `plugin.json` (nazwa `bm-probe`), `.mcp.json` jak w 7.1, jeden skill `probe-ping` („call bm_project and report the list”);
-- `probe/openai/`: `plugin.json` (format przenośny), jeden skill `probe-ping` i wariant MCP do testu.
+Bez sondy: testowany jest od razu docelowy plugin `basic-memory-nas` z gałęzi `main` (marketplace w korzeniu repo).
 
 **Claude (G0-C):**
-1. W claude.ai dodaj marketplace z gałęzi `probe`. Jeśli UI nie pozwala wskazać gałęzi, użyj tymczasowego repo `elconcept/bm-probe` i usuń je po F0.
-2. Zainstaluj `bm-probe`, połącz MCP.
-3. Wykonaj test G1 (niżej).
+1. W claude.ai dodaj marketplace `elconcept/basic-memory-plugin`.
+2. Zainstaluj `basic-memory-nas`, połącz MCP (OAuth Cloudflare).
+3. Wykonaj G1.
 
 **OpenAI (G0-O):**
 1. Ustal typ konta ChatGPT (Plus/Pro/Business/Enterprise) i rolę (admin workspace'u czy nie).
 2. Zarejestruj połączenie: chatgpt.com/plugins → „+” → „Add custom MCP server”, `https://bm.xlap.pl/mcp`, OAuth, „Create as a plugin”. Autoryzuj. Zapisz ID `plugin_asdk_app…`.
-3. W czacie ChatGPT wywołaj `bm_project`, potem `bm_write` (notatka `plugin-smoke-<data>` w projekcie `main`, folder `tests`) i `bm_read`. To test pełnego, zapisywalnego MCP.
-4. Sprawdź, którą drogą `probe/openai` trafia do ChatGPT web, w kolejności:
-   - (a) sync z GitHuba workspace'u (tylko admin);
-   - (b) marketplace lokalny w ChatGPT Desktop (`~/.agents/plugins/marketplace.json`), sprawdzając, czy plugin widać też w web;
-   - (c) Plugin Creator w ChatGPT.
-   Zapisz, która działa i czy skill `probe-ping` jest widoczny w web.
-5. **Kontrola duplikatów:** czy po instalacji `bm-probe` (z mapowaniem `.app.json` na ID z pkt 2) w ChatGPT są **dwa** aktywne zestawy narzędzi Basic Memory (plugin z rejestracji i plugin z repo). Jeśli tak, ustal, czy plugin z rejestracji da się ukryć lub wyłączyć bez zrywania połączenia, z którego korzysta mapowanie.
-6. Codex na MacBooku (zalogowany kontem ChatGPT): czy `bm-probe` pojawia się sam. Jeśli nie, czy instalacja z marketplace'u osobistego (git) daje działające `bm_*` bez `codex mcp login`.
+3. Sprawdź ścieżki dystrybucji `openai/`, w kolejności: (a) sync z GitHuba workspace'u (tylko admin); (b) marketplace lokalny w ChatGPT Desktop; (c) Plugin Creator.
+4. Zapisz **osobno** każdy wynik, z dowodem (zrzut lub log, bez sekretów):
+
+| Kod | Test | Wynik |
+|---|---|---|
+| O1 | `bm_project` w czacie ChatGPT | OK / brak / błąd |
+| O2 | `bm_write` (`plugin-smoke-<data>`, projekt `main`, folder `tests`) | OK / tylko odczyt / błąd |
+| O3 | `bm_read` tej notatki | OK / błąd |
+| O4 | skille `basic-memory-nas` widoczne w web | tak / nie |
+| O5 | skill i narzędzia widoczne w Codex | tak / nie |
+| O6 | O1–O5 po restarcie klienta | tak / nie |
+| O7 | dokładnie jeden zestaw narzędzi Basic Memory (rejestracja + plugin z repo) | tak / duplikat do wyłączenia / duplikat nieusuwalny |
+| O8 | Codex używa MCP bez `codex mcp login` | tak / nie |
+
+Niedostępność funkcji w planie konta zapisz jako **ograniczenie platformy**, nie błąd serwera NAS.
 
 **Wyniki G0-O:**
-- **G0-O-R:** mapowanie `.app.json` działa w web i Codex bez dodatkowej autoryzacji. Duplikat jest do wyłączenia albo nie występuje. → Wariant R w 7.2.
-- **G0-O-M:** działa tylko przenośny `mcp.json` (sync workspace'u) i Codex dziedziczy autoryzację. → Wariant M.
-- **G0-O-X:** pełne MCP nie działa na koncie, skille nie docierają do web albo każda ścieżka wymaga osobnego OAuth w Codex. → STOP. Raport do użytkownika. Część OpenAI wstrzymana, część Claude kontynuowana.
+- **G0-O-R:** O1–O8 OK z mapowaniem `.app.json`. → Wariant R w 7.2.
+- **G0-O-M:** O1–O8 OK tylko z przenośnym `mcp.json`. → Wariant M.
+- **G0-O-X:** którykolwiek z O1–O3, O7 (nieusuwalny duplikat) lub O8 negatywny. → STOP, raport. Część OpenAI wstrzymana (`enabled_targets` bez `openai`), część Claude kontynuowana.
 
-### G1. MCP z pluginu w claude.ai i dziedziczenie w Claude Code (wykonywana w G0-C)
+### G1. MCP z pluginu w claude.ai i dziedziczenie w Claude Code (w G0-C)
 
 **Test:**
 1. W czacie claude.ai: konektor pluginu widoczny, OAuth przechodzi, `bm_project` działa.
-2. W Claude Code na MacBooku (logowanie kontem) po restarcie, w `/plugin` i `/mcp`: serwer pluginu w stanie *connected*, bez osobnego logowania.
-3. Odczytaj i zapisz w VERIFICATION.md **dokładne nazwy narzędzi**, np. `mcp__plugin_bm-probe_basic-memory__bm_write`. Potrzebne są do matcherów `PostToolUse` (po zmianie nazwy pluginu prefiks będzie `basic-memory-nas`).
+2. W Claude Code na MacBooku (logowanie kontem) po restarcie, w `/plugin` i `/mcp`: serwer pluginu *connected*, bez osobnego logowania.
+3. Zapisz w VERIFICATION.md **dokładne nazwy narzędzi** (pełna lista `tools/list`, np. `mcp__plugin_basic-memory-nas_basic-memory__bm_write`).
+4. Zapisz jako fixture (`tests/fixtures/mcp/`, treść fikcyjna, struktura prawdziwa): wejście hooka `PostToolUse` dla `bm_write`, `bm_edit`, `bm_read` (sukces), `PostToolUseFailure` (błąd) oraz `SessionEnd`. Na tej podstawie ustalasz w 7.4 pola: identyfikator notatki w odpowiedzi zapisu, pole identyfikatora w wejściu odczytu, pole projektu.
 
 **Wyniki:**
-- **G1-A:** wszystkie trzy punkty spełnione. → Kontynuuj.
-- **G1-B, G1-C, G1-D** (Claude Code wymaga osobnego OAuth / brak serwera w czacie / dwa serwery): STOP. Raport do użytkownika i GPT. Bez fallbacku (C7).
+- **G1-A:** punkty 1–4 spełnione. → Kontynuuj.
+- **G1-B, G1-C, G1-D** (Claude Code wymaga osobnego OAuth / brak serwera w czacie / dwa serwery): STOP. Raport do użytkownika. Bez fallbacku.
 
 ### G2. Instalacja docelowego pluginu OpenAI (F7)
 
-Weryfikuje w docelowym pluginie ścieżkę wybraną w G0-O: narzędzia `bm_*`, skille, brak duplikatów. Wynik spoza G0-O-R/M → STOP.
+Powtórzenie O1–O8 na docelowym pluginie ścieżką wybraną w G0-O. Wynik spoza G0-O-R/M → STOP.
 
 ### G3. Codex: hooki (F8)
 
-**Test:**
-- czy Codex obsługuje w pluginie `SessionStart` z `compact`, `PreCompact`, `PostToolUse` dla narzędzi MCP i `Stop` (dokumentacja hooków Codex plus test);
-- format wejścia i wyjścia ustal z `upstream/src/basic_memory/hooks/adapters/codex.py`.
+**Test** (dla zainstalowanej wersji Codex, zapisz numer wersji): czy w pluginie działają `SessionStart(compact)`, `PreCompact`, `PostToolUse` dla narzędzi MCP, `Stop`, `SessionEnd`. Format wejścia i wyjścia ustal empirycznie, z fixture'ami jak w G1 pkt 4; wzorcem jest `plugins/codex/hooks/*.py`.
 
 **Wyniki:**
-- **G3-A:** wszystkie zdarzenia dostępne. → Pełny potok D5.
-- **G3-B:** brak `PostToolUse` dla MCP albo `Stop`. → Tryb zastępczy:
-  - skill `bm-checkpoint` po odczycie kontrolnym wywołuje `python3 <PLUGIN_ROOT>/hooks/bm_hook.py mark --key <ck> --status saved --ref <ref>` (albo `failed`);
-  - SessionStart nadal ponawia wpisy niezakończone;
-  - ograniczenie zapisane w VERIFICATION.md.
+- **G3-A:** wszystkie zdarzenia potrzebne do N6 (`PreCompact`, `SessionStart`, `PostToolUse` dla MCP) dostępne. → Pełny potok D5. Brak `Stop`/`SessionEnd` zapisz jako ograniczenie.
+- **G3-B:** brak `PostToolUse` dla MCP. → Tryb ograniczony:
+  - model po odczycie kontrolnym wywołuje `bm_hook.py report --key <ck> --ref <ref> [--error <txt>]`, co ustawia `reported_by_model` (nigdy `saved`);
+  - `reported_by_model` jest widoczny w `bm-status` i w liczniku SessionStart; do `saved` przechodzi tylko przez `confirm` użytkownika po sprawdzeniu notatki;
+  - ograniczenie zapisane w VERIFICATION.md;
+  - test: fałszywy `report` (notatka nie istnieje) nie daje `saved`.
+- **G3-C:** brak `PreCompact` lub `SessionStart`. → STOP dla hooków Codex; skille i MCP mogą działać bez hooków (decyzja użytkownika).
 
 ### G4. Diagnostyka na NAS przez `portainer_docker_proxy` (F3)
 
-Wszystko tylko do odczytu. W VERIFICATION.md zapisuj wyłącznie nazwy zmiennych i zredagowane montowania (źródło → cel, tryb), **nigdy wartości**.
-1. **Kontener:** GET `/containers/json`, projekcja `[].{id:Id,name:Names[0],state:State,image:Image}`. Znajdź kontener stacka `mcp-basic-memory`.
-2. **Konfiguracja:** GET `/containers/{id}/json`, projekcja `{env:Config.Env,mounts:Mounts[].{s:Source,d:Destination,rw:RW},cmd:Config.Cmd}`. Lokalnie wyciągnij **tylko nazwy** zmiennych (`split('=')[0]`). Ustal katalog konfiguracji i bazy CLI (`BASIC_MEMORY_HOME`, `config.json`, ścieżka bazy) oraz montowanie `knowledge` (`/app/data`).
-3. **Dostęp do CLI:** exec `basic-memory --version`:
-   - POST `/containers/{id}/exec` z `{"Cmd":["basic-memory","--version"],"AttachStdout":true,"AttachStderr":true,"Tty":true}`;
-   - POST `/exec/{execId}/start` z `{"Detach":false,"Tty":true}`.
-4. **Dostęp do bazy:** exec `basic-memory project list --json`, albo równoważne polecenie listy projektów z `--help`. Lista projektów musi zgadzać się z `bm_project` przez MCP (`main`). To dowód, że CLI widzi bazę serwera, a nie nowe, puste środowisko.
-5. **Dostęp do plików:** exec `ls /app/data` (same nazwy katalogów).
+Wszystko tylko do odczytu. **Żadne wywołanie nie zwraca do modelu wartości zmiennych środowiskowych** (N2). W VERIFICATION.md wyłącznie nazwy zmiennych i ścieżki wewnątrz kontenera.
+1. **Kontener:** GET `/containers/json`, `select` `[].{id:Id,name:Names[0],state:State,image:Image,ports:Ports}`. Znajdź `basic-memory-server`. Zapisz porty publikowane na hoście (wejście do §10 pkt 6).
+2. **Konfiguracja:** GET `/containers/{id}/json` **wyłącznie** z `select` `{user:Config.User,cmd:Config.Cmd,entry:Config.Entrypoint,mounts:Mounts[].{d:Destination,rw:RW}}`. Pole `Config.Env` nie występuje w projekcji. Jeśli narzędzie nie obsługuje `select` dla tego endpointu → STOP, nie pobieraj pełnego inspect.
+3. **Nazwy zmiennych:** exec `sh -c 'env | cut -d= -f1 | sort'` oraz `sh -c 'tr "\0" "\n" < /proc/1/environ | cut -d= -f1 | sort'` (tylko nazwy, proces exec i proces serwera).
+4. **CLI:** exec `/app/.venv/bin/basic-memory --version` (POST `/containers/{id}/exec` z `{"Cmd":[...],"AttachStdout":true,"AttachStderr":true,"Tty":true}`, potem POST `/exec/{execId}/start` z `{"Detach":false,"Tty":true}`).
+5. **Tożsamość środowiska:** exec `/app/.venv/bin/basic-memory project list --json` i porównanie z `bm_project` przez MCP (oczekiwane: `main`). Przy rozbieżności diagnoza **tylko odczytem**:
+   - `cat /proc/1/cmdline | tr "\0" " "` (polecenie serwera);
+   - różnice nazw zmiennych między pkt 3a i 3b (np. `BASIC_MEMORY_HOME`, `BASIC_MEMORY_CONFIG_DIR`);
+   - `ls -la` katalogu konfiguracji wskazanego przez te nazwy (same nazwy plików).
+   Ustal, którą konfigurację czyta serwer, i powtórz pkt 5 z tą konfiguracją (np. `env BASIC_MEMORY_HOME=<ta sama ścieżka> …`). Żadnych zmian w plikach.
+6. **Pliki:** exec `ls /app/data` (nazwy katalogów).
 
 **Wyniki:**
-- **G4-A:** punkty 3, 4 i 5 OK. → `memory-doctor` w wariancie zdalnym.
+- **G4-A:** pkt 4–6 OK i listy projektów zgodne (wprost albo po ustaleniu konfiguracji serwera w pkt 5). → `memory-doctor` w wariancie zdalnym, z dokładnym poleceniem exec zapisanym w VERIFICATION.md.
 - **G4-B:** exec niedostępny albo nieczytelny. → Wariant „instrukcja ręczna”.
-- **G4-C:** exec działa, ale lista projektów się nie zgadza. → STOP. Doctor diagnozowałby niewłaściwe środowisko.
+- **G4-C:** listy nadal niezgodne. → STOP. Raport do użytkownika. `memory-doctor` w wariancie G4-B do czasu wyjaśnienia. Nie zakładaj utraty projektów i nie diagnozuj indeksu.
 
 ### G5. Hooki w Cowork (F6)
 
-**Test:**
 1. SessionStart wstrzykuje polecenie orientacji.
 2. Jeśli w Cowork da się wywołać kompakcję, przejdź pełny potok D5.
 3. Sprawdź, czy `python3` jest dostępny w VM.
 
-**Wyniki:**
-- **G5-A:** działa.
-- **G5-B:** hooki nie działają → ograniczenie platformy, nie blokuje wdrożenia.
+**Wyniki:** **G5-A** działa; **G5-B** hooki nie działają → ograniczenie platformy, nie blokuje wdrożenia.
 
 ### G6. Aktualizacja po zmianie w repo (F9)
 
-Tabela: powierzchnia → czy się zaktualizowało → po jakim działaniu. Dla Cowork uwzględnij znany błąd anthropics/claude-code#65426 i zapisz procedurę obejścia.
+Tabela: powierzchnia → czy się zaktualizowało → po jakim działaniu → **czy hooki nowej wersji się wykonują** → czy wymagane było ponowne zatwierdzenie zaufania (Codex). Dla Cowork uwzględnij anthropics/claude-code#65426 i zapisz procedurę obejścia. Sama widoczność nowej wersji nie zalicza bramki.
 
 ---
 
@@ -233,35 +260,37 @@ basic-memory-plugin/
 │   ├── .claude-plugin/plugin.json
 │   ├── .mcp.json
 │   ├── skills/<24>/
-│   ├── hooks/hooks.json
-│   ├── hooks/bm_hook.py
+│   ├── hooks/{hooks.json,bm_hook.py}
 │   ├── schemas/
 │   ├── output-styles/
-│   └── LICENSE
+│   ├── LICENSE
+│   └── UPSTREAM_ATTRIBUTION.md
 ├── openai/                             # GENEROWANE
 │   ├── plugin.json
 │   ├── .app.json | mcp.json            # wg G0-O
 │   ├── skills/<24>/
-│   ├── hooks/hooks.json
-│   ├── hooks/bm_hook.py
-│   └── LICENSE
+│   ├── hooks/{hooks.json,bm_hook.py}
+│   ├── LICENSE
+│   └── UPSTREAM_ATTRIBUTION.md
+├── vendor/upstream/                    # snapshot upstreamu (worker)
 ├── src/
 │   ├── hooks/bm_hook.py
 │   └── templates/{claude,openai}/...
-├── overrides/skills/{bm-setup,bm-status,memory-doctor}/SKILL.md
-├── patches/skills/{bm-checkpoint,bm-orient,memory-okf}.patch
-├── config/build.json
-├── scripts/{build.py,check.py}
+├── patches/skills/<skill>/{claude,openai,all}.json   # zakotwiczone zamiany old→new, przypięte do upstream_sha
+├── config/{build.json,upstream.lock.json}
+├── scripts/{build.py,check.py,sync_upstream.py}
 ├── tests/
 │   ├── test_build.py
 │   ├── test_bm_hook.py
 │   ├── test_negative.py
-│   └── fixtures/                       # syntetyczne transkrypty
+│   ├── test_sync_upstream.py
+│   └── fixtures/{transcripts,mcp}/     # syntetyczne, struktura z prawdziwych klientów
 ├── build-info.json
-├── docs/{PLAN.md,VERIFICATION.md}
+├── docs/{PLAN.md,VERIFICATION.md,IMPLEMENTATION_LOG.md,FEATURE_MATRIX.md,NAS_PRECHECK.md,REVIEW_*.md}
 ├── .gitleaks.toml
 ├── .github/workflows/{ci.yml,sync-upstream.yml}
 ├── LICENSE
+├── UPSTREAM_ATTRIBUTION.md
 └── README.md
 ```
 
@@ -269,7 +298,7 @@ basic-memory-plugin/
 
 ## 6. Build
 
-Tylko biblioteka standardowa Pythona 3.12.
+Tylko biblioteka standardowa Pythona 3.12. Testy w `unittest` (uruchamialne też przez `pytest`). Build **nie wykonuje** kodu upstreamu.
 
 ### 6.1. `config/build.json`
 
@@ -279,12 +308,14 @@ Tylko biblioteka standardowa Pythona 3.12.
   "display_name": "Basic Memory (NAS)",
   "mcp_server_key": "basic-memory",
   "mcp_url": "https://bm.xlap.pl/mcp",
+  "enabled_targets": ["claude"],
   "openai_variant": null,
   "openai_app_id": null,
   "claude_tool_prefix": null,
   "exclude_skills": ["memory-ci-capture", "memory-agents", "memory-quest", "memory-literary-analysis"],
   "overrides": ["bm-setup", "bm-status", "memory-doctor"],
-  "expected_skill_count": 24,
+  "patches": ["bm-checkpoint", "bm-orient", "memory-okf"],
+  "expected_skill_count": { "claude": 24, "openai": 24 },
   "namespace_rewrites": {
     "basic-memory:bm-": "basic-memory-nas:bm-",
     "codex:bm-": "basic-memory-nas:bm-",
@@ -300,49 +331,50 @@ Tylko biblioteka standardowa Pythona 3.12.
 ```
 
 Wartości uzupełniane po bramkach:
-- `openai_variant`: `"R"` albo `"M"`, z G0-O;
-- `openai_app_id`: z G0-O, to nie jest sekret;
+- `enabled_targets`: `openai` dodawany dopiero po G0-O-R/M;
+- `openai_variant` (`"R"`/`"M"`) i `openai_app_id` (nie jest sekretem): z G0-O;
 - `claude_tool_prefix`: z G1, np. `mcp__plugin_basic-memory-nas_basic-memory__`.
 
-Build z wartością `null` w polu wymaganym dla danego artefaktu kończy się błędem.
+Build celu z `enabled_targets`, dla którego wymagane pole ma `null`, kończy się błędem. Cel spoza `enabled_targets` może istnieć w repo jako **kandydat** (stan obecny: `openai/` w wariancie M, `dcfc611`) i jest sprawdzany `--check`, ale nie jest opisywany jako gotowy, a jego wpis w `.agents/plugins/marketplace.json` ma w opisie „candidate – not verified” do czasu G0-O.
 
 ### 6.2. `scripts/build.py`: algorytm
 
-1. Zbierz źródła: `upstream/skills/memory-*/` (bez `evals/`) i `upstream/plugins/claude-code/skills/bm-*/`.
-2. Odrzuć skille z `exclude_skills` oraz skille z `metadata.internal: true` (funkcja `is_internal_skill` z `upstream/scripts/validate_skills.py`).
-3. Nadpisania z `overrides/`. W `build-info.json` zapisz SHA-256 upstreamowego `SKILL.md` każdego nadpisanego skilla (`override_upstream_hashes`).
-4. Patche: `git apply --3way`. Konflikt → exit 1.
+Wywołanie: `build.py --upstream vendor/upstream --out . --target claude|openai|all [--check]`. `all` = `enabled_targets`.
+
+Dla każdego celu:
+1. Źródła: `vendor/upstream/skills/memory-*/` (bez `evals/`) i natywne `bm-*` celu (`plugins/claude-code/skills/` dla `claude`, `plugins/codex/skills/` dla `openai`).
+2. Odrzuć `exclude_skills` i skille z `metadata.internal: true`.
+3. Modyfikacje skilli wyłącznie jako **zakotwiczone zamiany** z `patches/skills/<skill>/<cel>.json` albo `all.json` (stan zaimplementowany w `8f086a0`, `303fb45`): lista `{old, new}` przypięta do `upstream_sha`. Każde `old` musi wystąpić w upstreamowym pliku dokładnie raz; brak kotwicy, wielokrotne trafienie albo inny `upstream_sha` → exit 1 i ręczny przegląd w PR synchronizacji. Pełne przepisanie pliku dozwolone tylko jako jedna zamiana całej treści, z uzasadnieniem w PR.
+4. Skill z listy `overrides`/`patches` w `build.json` bez pliku zamian dla celu → exit 1. W `build-info.json` zapisz SHA-256 upstreamowego `SKILL.md` każdego modyfikowanego skilla, per cel.
 5. `namespace_rewrites` we wszystkich `*.md`.
 6. `forbidden_strings`: trafienie → exit 1.
-7. Wyczyść i wypełnij `claude/skills/` oraz `openai/skills/`. Skopiuj `schemas/` i `output-styles/` do `claude/`.
-8. Manifesty z szablonów: podstaw `{{version}}`, `{{plugin_name}}`, `{{display_name}}`, `{{mcp_url}}`, `{{mcp_server_key}}`, `{{claude_tool_prefix}}`, `{{openai_app_id}}`. Dla OpenAI generuj **tylko** plik wariantu (`.app.json` albo `mcp.json`).
-9. Skopiuj `src/hooks/bm_hook.py` do obu artefaktów.
-10. Wersja: hash zawartości bez pól wersji. Przy zmianie `N+1` i ponowne wygenerowanie. Zapisz w `build-info.json`: `version`, `content_hash`, `upstream_sha`, `upstream_date`, `override_upstream_hashes`, `skills`.
-11. Liczba skilli = `expected_skill_count` w obu artefaktach. Inaczej exit 1.
-12. Tryb `--check`: buduje do katalogu tymczasowego i porównuje z repo. Różnica → exit 1.
+7. Wyczyść i wypełnij `<cel>/skills/`. Dla `claude` skopiuj `schemas/` i `output-styles/`.
+8. Manifesty z szablonów (`{{version}}`, `{{plugin_name}}`, `{{display_name}}`, `{{mcp_url}}`, `{{mcp_server_key}}`, `{{claude_tool_prefix}}`, `{{openai_app_id}}`). Dla OpenAI **tylko** plik wariantu.
+9. Skopiuj `src/hooks/bm_hook.py` i `LICENSE` (AGPL-3.0) oraz wygeneruj `UPSTREAM_ATTRIBUTION.md` (pin, źródła). `plugin.json` obu celów ma `"license": "AGPL-3.0-or-later"`.
+10. Wersja: hash zawartości bez pól wersji; przy zmianie `N+1`. `build-info.json`: `version`, `content_hash`, `upstream_sha` (z `config/upstream.lock.json`), `targets`, `override_upstream_hashes`, `skills` per cel.
+11. Liczba skilli = `expected_skill_count[cel]`. Inaczej exit 1.
+12. `--check`: build do katalogu tymczasowego i porównanie z repo. Różnica → exit 1.
 
 ### 6.3. `scripts/check.py`
 
-1. Walidacja skilli: `upstream/scripts/validate_skills.py` na kopii `memory-*` oraz własna kontrola frontmatter `bm-*` (`name`, `description`).
-2. `claude plugin validate --strict ./claude`.
-3. Walidacja `openai/plugin.json` i pliku MCP względem schematów agent-plugins.org 1.0.0, a gdy są nieosiągalne, strukturalnie wg 7.2.
-4. Skan sekretów:
-   - `gitleaks detect --no-git --source . --config .gitleaks.toml`;
-   - reguły własne w `.gitleaks.toml`:
-     - `[0-9a-f]{32}\.access` (Cloudflare Access client ID);
-     - `\b[0-9a-f]{64}\b` (sekret Access/hex);
-     - `bmc_[A-Za-z0-9]{16,}`;
-     - `eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}` (JWT);
-     - `-----BEGIN [A-Z ]*PRIVATE KEY-----`;
-     - `gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,}`;
-     - `sk-[A-Za-z0-9]{20,}`.
-   - Słowa `Authorization` i `Bearer` **nie są** same w sobie błędem.
-   - Allowlist wyłącznie dla `build-info.json` (pola `*_hash`, `upstream_sha`) i `tests/fixtures/`.
-5. `pytest tests/`. Testy negatywne w `tests/test_negative.py`:
-   - build z wstrzykniętym `npx skills add` w nadpisaniu → exit 1;
-   - build z wykluczonym skillem przywróconym → zła liczba skilli → exit 1;
-   - plik z fałszywym JWT w `claude/` → skan sekretów wykrywa;
-   - konflikt patcha → exit 1.
+1. Frontmatter wszystkich skilli (`name`, `description`, zgodność `name` z katalogiem), własna implementacja.
+2. `claude plugin validate --strict ./claude` (gdy `claude` w `enabled_targets`).
+3. OpenAI (gdy włączony): `plugin.json` i plik MCP względem schematów agent-plugins.org 1.0.0, a gdy nieosiągalne, strukturalnie wg 7.2.
+4. Skan sekretów: `gitleaks` na plikach **i historii git** (`gitleaks git` w CI z `fetch-depth: 0`), konfiguracja `.gitleaks.toml`:
+   - reguły: `[0-9a-f]{32}\.access`; `\b[0-9a-f]{64}\b`; `bmc_[A-Za-z0-9]{16,}`; JWT `eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}`; `-----BEGIN [A-Z ]*PRIVATE KEY-----`; `gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,}`; `sk-[A-Za-z0-9]{20,}`;
+   - `Authorization` i `Bearer` same w sobie nie są błędem;
+   - allowlist wyłącznie: `build-info.json` (pola `*_hash`, `upstream_sha`), `config/upstream.lock.json` (`upstream_sha`, `snapshot_digest`), `tests/fixtures/` (wyłącznie oznaczone fikcyjne wartości).
+5. Kontrole statyczne:
+   - wynikowy `*/skills/memory-doctor/SKILL.md` nie zawiera `Config.Env` ani `/containers/{id}/json` bez `select` (R06);
+   - `bm_hook.py` nie importuje `socket`, `urllib`, `http`, `ssl`, `subprocess` (N5).
+6. Testy (`python -m unittest`), w tym `tests/test_negative.py`:
+   - wstrzyknięte `npx skills add` w zamianie → exit 1;
+   - kotwica `old` nieobecna albo występująca wielokrotnie → exit 1;
+   - przywrócony wykluczony skill → zła liczba skilli → exit 1;
+   - fałszywy JWT w `claude/` → skan wykrywa;
+   - brak pliku zamian dla jednego celu → exit 1;
+   - `openai` w `enabled_targets` przy `openai_variant: null` → exit 1;
+   - `Config.Env` w `memory-doctor` → exit 1.
 
 ---
 
@@ -370,14 +402,19 @@ Bez katalogu `bin/`.
 { "mcpServers": { "{{mcp_server_key}}": { "type": "http", "url": "{{mcp_url}}" } } }
 ```
 
-`hooks.json`. Każdy handler ma `"type": "command"`, `"command": "python3"`, a `args` zaczyna się od `"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py"`. W liście `args` poniżej pominięto ten pierwszy element.
+`hooks.json`. Każdy handler: `"type": "command"`, `"command": "python3"`, `args` zaczyna się od `"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py"` (poniżej pominięte).
 
 | Zdarzenie | Matcher | args (dalsza część) | timeout |
 |---|---|---|---|
 | SessionStart | `startup\|resume\|clear\|compact` | `session-start --harness claude` | 10 |
 | PreCompact | (brak) | `pre-compact --harness claude` | 30 |
 | PostToolUse | `{{claude_tool_prefix}}bm_(write\|edit\|read)` | `post-tool --harness claude` | 10 |
+| PostToolUseFailure | `{{claude_tool_prefix}}bm_(write\|edit\|read)` | `post-tool-failure --harness claude` | 10 |
+| PreToolUse | `Bash` | `guard --harness claude` | 5 |
 | Stop | (brak) | `stop --harness claude` | 10 |
+| SessionEnd | (brak) | `session-end --harness claude` | 30 |
+
+`guard`: jeśli `tool_input.command` zawiera `bm_hook.py` i `confirm` → `permissionDecision: "deny"` z wyjaśnieniem. W każdym innym przypadku brak wyjścia.
 
 `.claude-plugin/marketplace.json` (korzeń repo): marketplace `elconcept-basic-memory`, jeden plugin `basic-memory-nas`, `source: "./claude"`, bez `version` we wpisie.
 
@@ -390,7 +427,7 @@ Bez katalogu `bin/`.
 
 Dokładne nazwy pól sprawdź w dokumentacji przed pierwszym buildem. Rozbieżność → popraw szablon i odnotuj.
 
-- **Wariant R:** `.app.json` mapuje na `{{openai_app_id}}`. Schemat weź z pliku wygenerowanego przez `@plugin-creator` w G0-O. Brak `mcp.json`.
+- **Wariant R:** `.app.json` mapuje na `{{openai_app_id}}`. Schemat z pliku wygenerowanego przez `@plugin-creator` w G0-O. Brak `mcp.json`.
 - **Wariant M:** `mcp.json`:
   ```json
   {
@@ -406,422 +443,437 @@ Dokładne nazwy pól sprawdź w dokumentacji przed pierwszym buildem. Rozbieżno
   ```
   Brak `.app.json`.
 
-`hooks/hooks.json` (Codex): te same zdarzenia co w 7.1, w zakresie potwierdzonym w G3, w formacie wzorca `upstream/plugins/codex/hooks/hooks.json`. Polecenie: `python3 "${PLUGIN_ROOT}/hooks/bm_hook.py" <zdarzenie> --harness codex`.
+`hooks/hooks.json` (Codex): zdarzenia z 7.1 w zakresie potwierdzonym w G3, w formacie wzorca `plugins/codex/hooks/hooks.json`. Polecenie: `python3 "${PLUGIN_ROOT}/hooks/bm_hook.py" <podkomenda> --harness codex`.
 
-`.agents/plugins/marketplace.json` (repo): wpis `basic-memory-nas` → `./openai`. Kształt wpisu według dokumentacji OpenAI.
+`.agents/plugins/marketplace.json` (repo): wpis `basic-memory-nas` → `./openai`.
 
 ### 7.3. `bm_hook.py`: interfejs
 
-- Python 3, tylko stdlib, bez sieci (N5).
-- Każda ścieżka kończy się `exit 0`. Jedynym wyjątkiem jest celowa blokada w `stop`, wyrażona przez JSON, nie przez kod wyjścia.
-- Podkomendy: `session-start | pre-compact | post-tool | stop | mark | status`. Wejście JSON na stdin, poza `mark` i `status`.
+- Python 3, tylko stdlib, bez sieci (N5). Wolno korzystać z kodu upstreamu (`src/basic_memory/cli/commands/hook.py`, `plugins/*/hooks/*.py`) z atrybucją (N10).
+- Każda ścieżka kończy się `exit 0`. Wyjątki: celowa blokada w `stop` i odmowa w `guard`, wyrażone JSON-em, oraz `confirm`/`report`/`dismiss`, które zwracają kod ≠ 0 przy odmowie.
+- Podkomendy hooków (JSON na stdin): `session-start | pre-compact | post-tool | post-tool-failure | stop | session-end | guard`.
+- Podkomendy ręczne: `status | report | confirm | dismiss`.
 
-**Konfiguracja.** Blok `basicMemory` w kolejności rosnącego pierwszeństwa:
-1. `~/.claude/settings.json` (lub `$CLAUDE_CONFIG_DIR/settings.json`);
-2. `<projekt>/.claude/settings.json`;
-3. `<projekt>/.claude/settings.local.json`.
-
-Dla Codex wzorzec to `load_codex_settings` w upstreamowym `hook.py`.
+**Konfiguracja.** Blok `basicMemory`, w kolejności rosnącego pierwszeństwa: `~/.claude/settings.json` (lub `$CLAUDE_CONFIG_DIR`), `<projekt>/.claude/settings.json`, `<projekt>/.claude/settings.local.json`. Dla Codex odpowiednik według dokumentacji ustawień Codex (ustalony w G3).
 
 | Klucz | Domyślnie |
 |---|---|
-| `primaryProject` | **brak**. Hook nie przyjmuje wartości domyślnej (N8). |
+| `primaryProject` | `main` — domyślny projekt sprawdzony w bieżącej instancji Basic Memory |
 | `captureFolder` | `sessions` |
 | `orientOnStart` | `true` |
 | `checkpointOnCompact` | `true` |
-| `materialMaxBytes` | `49152` |
+| `checkpointOnSessionEnd` | `true` |
+| `sessionEndMinTurns` | `3` |
+| `materialMaxBytes` | `49152` (na część) |
+| `materialMaxParts` | `4` |
 
-**Katalog danych:** `$CLAUDE_PLUGIN_DATA` (Codex: `$PLUGIN_DATA`). Struktura:
+**Katalog danych:** `$CLAUDE_PLUGIN_DATA` (Codex: `$PLUGIN_DATA`).
 ```
 <DATA>/
-  state.json               # kolejka checkpointów
-  material/<ck>.md         # materiał checkpointu
+  state.json               # wpisy checkpointów + open_sessions
+  material/<ck>.<n>.md     # części materiału
   bm-hook.log              # dziennik JSONL, rotacja przy 1 MB
 ```
-- Uprawnienia: katalogi `0700`, pliki `0600` (ustawiaj jawnie po utworzeniu).
-- Zapis `state.json`: atomowy (plik tymczasowy, `fsync`, `os.replace`) pod blokadą `fcntl.flock` na `state.lock`.
-- Brak zmiennej katalogu danych:
-  - `pre-compact` wypisuje na stderr ostrzeżenie i zapisuje materiał do `~/.bm-hook-data/` z tymi samymi uprawnieniami;
-  - pozostałe podkomendy używają tego samego katalogu zapasowego.
+- Uprawnienia: katalogi `0700`, pliki `0600` (ustawiane jawnie).
+- Zapis `state.json`: atomowy (plik tymczasowy, `fsync`, `os.replace`) pod `fcntl.flock` na `state.lock`. Uszkodzony `state.json` → przeniesienie do `state.json.corrupt-<ts>`, nowy stan, wpis w dzienniku i komunikat w najbliższym SessionStart (nie cicho).
+- Brak zmiennej katalogu danych: ostrzeżenie na stderr i katalog zapasowy `~/.bm-hook-data/` z tymi samymi uprawnieniami.
 
 **Wpis stanu:**
 ```json
 {
   "ck": "ck-<16 hex>",
   "session_id": "...",
-  "compaction_index": 1,
+  "seq": 1,
+  "trigger": "manual|auto|session_end|recovered",
   "harness": "claude",
-  "project": "legal",
+  "project": "main | null",
   "capture_folder": "sessions",
-  "status": "pending|written|saved|failed|stale",
-  "material": "<DATA>/material/ck-....md",
+  "status": "pending|written|saved|failed|reported_by_model|dismissed|stale",
+  "capture": "ok|partial|failed:<powód>",
+  "complete": true,
+  "material": ["<DATA>/material/ck-....1.md"],
   "note_ref": null,
   "error": null,
   "created": "ISO8601",
   "updated": "ISO8601",
-  "stop_blocked": false
+  "stop_blocked": false,
+  "history": [{"at": "ISO8601", "from": "pending", "to": "written", "by": "post-tool"}]
 }
 ```
-`ck = "ck-" + sha256(f"{session_id}:{compaction_index}")[:16]`, gdzie `compaction_index` to liczba wcześniejszych wpisów tej sesji powiększona o 1.
+`ck = "ck-" + sha256(f"{session_id}:{seq}")[:16]`, gdzie `seq` to liczba wcześniejszych wpisów tej sesji + 1.
+
+`open_sessions`: `{session_id: {transcript_path, cwd, project, started, last_seen, ended: bool, last_capture_offset}}`.
+
+Powody `capture: failed:…`: `no_transcript_path`, `unreadable`, `unknown_format` (niepusty plik, zero rozpoznanych wypowiedzi), `boundary_uncertain` (wtedy `partial`), `local_write_error`, `missing_precompact`.
 
 ### 7.4. `bm_hook.py`: logika podkomend
 
-**`pre-compact`:**
-1. Jeśli `checkpointOnCompact = false`: tylko wpis do dziennika i koniec.
-2. Jeśli brak `primaryProject`: utwórz wpis z `project: null`, status `pending`. Materiał zapisz normalnie. Model zapyta o projekt przy SessionStart.
-3. Odczytaj `transcript_path` strumieniowo, linia po linii, z tolerancją uszkodzonych linii.
-   - Wyznacz segment od **ostatniej granicy kompakcji**. Znacznik granicy ustal na prawdziwym transkrypcie Claude Code w F1: wpis z `isCompactSummary` albo `type: "system"` z podtypem kompakcji. Zapisz go w testach jako fixture syntetyczny. Brak granicy oznacza cały plik.
-   - Parsowanie ról i treści wzoruj na `_transcript_turns` z upstreamowego `hook.py`: pomijaj `isMeta` i `toolUseResult`. Dodatkowo zbieraj **wywołania narzędzi** asystenta: nazwa plus pola `file_path`, `path`, `command` (do 200 znaków), `title`, `project`. Pomijaj wyniki narzędzi.
-4. Złóż materiał markdown w limicie `materialMaxBytes`, w kolejności priorytetu:
-   1. nagłówek z metadanymi: `ck`, `session_id`, `compaction_index`, `trigger`, `cwd`, `project`, czas;
-   2. pierwsza wypowiedź użytkownika w segmencie (do 4000 znaków);
-   3. **wszystkie** wypowiedzi użytkownika w segmencie (każda do 2000 znaków), od najnowszych, dopóki starcza limitu, potem prezentowane chronologicznie;
-   4. ostatnie 15 wypowiedzi asystenta (każda do 2500 znaków);
-   5. lista wywołań narzędzi (deduplikowana, do 150 pozycji);
-   6. starsze wypowiedzi asystenta, dopóki starcza limitu.
+**`pre-compact`** (i wspólna funkcja przechwycenia dla `session-end` i odzyskiwania):
+1. `checkpointOnCompact = false` → wpis do dziennika i koniec.
+2. Projekt = `primaryProject`; bez ustawienia `null`, co oznacza domyślny projekt serwera. Faktyczny projekt zapisu ustala `post-tool` z `tool_input.project` pierwszego udanego `bm_write`/`bm_edit`.
+3. Brak `transcript_path`, plik nieczytelny lub nierozpoznany format → wpis `pending` z `capture: failed:<powód>`, bez materiału. Koniec. Nic nie jest „po cichu” udane.
+4. Odczyt strumieniowy, linia po linii, z tolerancją uszkodzonych linii (liczba odrzuconych w nagłówku).
+   - Segment: od ostatniej granicy kompakcji (znacznik ustalony w F1 na prawdziwym transkrypcie, zapisany jako fixture). Dla `session_end`/`recovered`: od `last_capture_offset`. Brak pewnej granicy → cały plik i `capture: partial` (`boundary_uncertain`).
+   - Wypowiedzi użytkownika i asystenta (bez `isMeta`, bez wyników narzędzi) oraz wywołania narzędzi asystenta (nazwa + `file_path`, `path`, `command` do 200 znaków, `title`, `project`).
+   - **Artifacts:** z wyników narzędzi wyłącznie identyfikatory pasujące do wzorców: SHA commitów z wyjścia `git commit`/`git log`, URL PR/issue GitHub, ścieżki plików z wywołań zapisu. Nigdy treść wyników.
+5. Materiał markdown w częściach po `materialMaxBytes`, maks. `materialMaxParts`. Kolejność priorytetu przy przydziale budżetu:
+   1. nagłówek: `ck`, `session_id`, `seq`, `trigger`, `cwd`, `project`, czas, `complete`, liczba pominiętych pozycji według rodzaju, liczba odrzuconych linii;
+   2. **Decision candidates:** każdy akapit (użytkownika lub asystenta) z całego segmentu, który zawiera znacznik decyzji (PL/EN: `decyzj`, `zdecydow`, `ustal`, `postanow`, `wybier`, `przyjmuj`, `rekomend`, `decision`, `decided`, `we will`, `chose`, `agreed`, wzorce `\bD\d+\b`), do 1500 znaków, chronologicznie;
+   3. Artifacts;
+   4. wszystkie wypowiedzi użytkownika (do 2000 znaków każda);
+   5. wszystkie wypowiedzi asystenta chronologicznie (do 2500 znaków każda; bloki kodu > 20 linii zastąpione znacznikiem `[code: n lines]`);
+   6. lista wywołań narzędzi (deduplikowana, do 150).
 
-   Dodaj znacznik „[TRUNCATED: n items omitted]” tam, gdzie coś pominięto.
-5. Zapisz `material/<ck>.md` (`0600`) i wpis `pending`. Dziennik: `checkpoint_required`.
-6. Czas wykonania mierz i zapisuj w dzienniku. Cel < 5 s dla transkryptu 50 MB. Jeśli przekroczony, zapisz ostrzeżenie (nie przerywaj).
+   Przy braku miejsca pomijane są najpierw środkowe wypowiedzi asystenta z pkt 5, potem lista z pkt 6. Pkt 1–3 nie są obcinane, chyba że same przekraczają cały budżet (wtedy `complete: false` i dokładna liczba pominiętych). Każde pominięcie oznaczone `[OMITTED: n <rodzaj>]`.
+6. Zapis części (`0600`) i wpisu `pending`. Dziennik: `checkpoint_required`. Błąd zapisu materiału → próba katalogu zapasowego; dalej błąd → wpis z `capture: failed:local_write_error`; błąd zapisu samego stanu → stderr i dziennik (pozostaje siatka `missing_precompact` z `session-start`).
+7. Czas mierzony; cel < 5 s dla transkryptu 50 MB, przekroczenie → ostrzeżenie.
 
-**`session-start`** (wyjście: jeden obiekt `hookSpecificOutput.additionalContext`, wszystkie bloki sklejone):
-1. **Retencja:**
-   - usuń materiały wpisów `saved` starszych niż 7 dni;
-   - wpisy niezakończone starsze niż 30 dni oznacz jako `stale` (bez usuwania materiału).
-2. **Blok checkpointu,** gdy `source == compact` i istnieją wpisy `pending`/`failed` tej sesji (`<TEKST_CHECKPOINT>`).
-3. **Blok ponowień:** wpisy `pending|written|failed|stale` z innych sesji, gdy `project == primaryProject` albo `project == null`. Maksymalnie 5, najstarsze pierwsze (`<TEKST_RETRY>`).
-4. **Blok orientacji,** gdy `source in (startup, resume, clear)` i `orientOnStart` (`<TEKST_ORIENT>`).
-5. Brak bloków → brak wyjścia.
+**`session-end`:** gdy `checkpointOnSessionEnd` i od `last_capture_offset` są ≥ `sessionEndMinTurns` wypowiedzi użytkownika → przechwycenie jak wyżej z `trigger: session_end`. Oznacz `open_sessions[sid].ended = true`.
 
-**`post-tool`:**
-- Wejście: `tool_name`, `tool_input`, `tool_response`. Szukaj wzorca `ck-[0-9a-f]{16}` w zserializowanym `tool_input` (dla zapisu) albo w tekście `tool_response` (dla odczytu). Brak klucza → koniec.
-- Błąd to `tool_response.isError == true` albo brak treści.
+**`session-start`** (wyjście: jeden `hookSpecificOutput.additionalContext`, bloki sklejone, łącznie ≤ 6000 znaków):
+1. Rejestracja bieżącej sesji w `open_sessions`.
+2. **Odzyskiwanie:** sesje z `open_sessions` z `ended == false`, `last_seen` > 2 h temu, których transkrypt istnieje i urósł od `last_capture_offset` o ≥ `sessionEndMinTurns` wypowiedzi → przechwycenie `trigger: recovered`.
+3. **Retencja:** usuń materiał wpisów `saved`/`dismissed` starszych niż 7 dni; wpisy niezakończone > 30 dni → `stale`.
+4. **Siatka kompakcji:** `source == compact` i brak wpisu tej sesji utworzonego w ostatnich 10 min → wpis `pending`, `capture: failed:missing_precompact`.
+5. **Blok checkpointu:** `source == compact` i wpisy tej sesji `pending`/`failed` (`<TEKST_CHECKPOINT>`).
+6. **Blok ponowień:** wpisy `pending|written|failed` z innych sesji tego samego projektu (`project == primaryProject`, a bez ustawienia: wpisy z `null` i z domyślnym projektem serwera). Maks. 5, najstarsze pierwsze (`<TEKST_RETRY>`).
+7. **Licznik:** liczba wpisów niezakończonych w innych projektach, `reported_by_model` i `stale`, bez treści. Uszkodzony stan → komunikat.
+8. **Blok orientacji:** `source in (startup, resume, clear)` i `orientOnStart` (`<TEKST_ORIENT>`).
+9. Brak bloków → brak wyjścia.
+
+**`post-tool`** (sukces wywołania):
+- Dopasowanie wpisu: wzorzec `ck-[0-9a-f]{16}` w zserializowanym `tool_input` (zapis/edycja) albo `tool_input.<identyfikator>` równe `note_ref` wpisu (odczyt, edycja). Brak dopasowania → koniec.
+- Błąd = `isError == true`, pusta treść albo treść, która według fixture'ów G1 oznacza błąd.
 - `bm_write` / `bm_edit`:
-  - bez błędu → `written`, `note_ref` = pierwszy z napotkanych identyfikatorów w odpowiedzi (permalink, `file_path`, `title`, `external_id`);
+  - wpis ma ustalony projekt, a `tool_input.project` jest inny → bez zmiany stanu, `error: project_mismatch`, dziennik; wpis z `project: null` przyjmuje projekt z pierwszego udanego zapisu;
+  - bez błędu → `written`, `note_ref` = identyfikator notatki z odpowiedzi (pole ustalone w G1; brak → `failed`, `error: no_ref`);
   - błąd → `failed`, `error` = pierwsze 300 znaków.
-- `bm_read`: odpowiedź bez błędu, zawierająca `ck`, przy wpisie `written` lub `failed` → `saved`.
-- Każda zmiana trafia do dziennika.
+- `bm_read` → `saved` wyłącznie gdy jednocześnie: wpis `written`; znormalizowany identyfikator z `tool_input` == `note_ref`; `tool_input.project` == `project`; brak błędu; treść zawiera linię pasującą do `^checkpoint_key:\s*<ck>\s*$` (tryb wieloliniowy). W przeciwnym razie bez zmiany stanu i wpis w dzienniku z przyczyną (`readback_mismatch`, `readback_error`).
+- Każda zmiana: wpis w `history` i w dzienniku.
+
+**`post-tool-failure`:** dopasowanie jak wyżej; `bm_write`/`bm_edit` → `failed` z przyczyną; `bm_read` → bez zmiany stanu, `error: readback_failed`.
 
 **`stop`:**
-- Jeśli `stop_hook_active == true` → brak wyjścia (zapobieganie pętli).
-- Jeśli istnieje wpis tej sesji ze statusem innym niż `saved` i `stop_blocked == false`:
-  - ustaw `stop_blocked = true`;
-  - wypisz `{"decision":"block","reason":"<TEKST_STOP>"}`.
+- `stop_hook_active == true` → brak wyjścia.
+- Pierwszy wpis tej sesji o statusie `pending|written|failed` z `stop_blocked == false` → ustaw `stop_blocked = true`, wypisz `{"decision":"block","reason":"<TEKST_STOP>"}`.
 - W przeciwnym razie brak wyjścia.
 
-**`mark --key <ck> --status saved|failed [--ref <ref>] [--error <txt>]`:** tryb zastępczy G3-B. Ustawia stan bez sprawdzania odpowiedzi MCP i oznacza wpis `marked_by_model: true`.
 
-**`status`:** wypisuje JSON z liczbą wpisów w każdym stanie i 10 ostatnimi wpisami (bez treści materiału). Używane przez `bm-status`.
+**`report --key <ck> [--ref <ref>] [--error <txt>]`:** tylko tryb G3-B. Ustawia `reported_by_model` (z `--ref`) albo `failed` (z `--error`). Nigdy `saved`.
 
-**Teksty.** Wartości z wpisu stanu podstawia skrypt; teksty są po angielsku, jak upstream.
-- `<TEKST_CHECKPOINT>`: „Basic Memory checkpoint REQUIRED (context was just compacted). Before any other work, use the `basic-memory-nas:bm-checkpoint` skill in hook mode with: checkpoint_key={ck}, material file={material}, project={project or 'NOT SET – ask the user which Basic Memory project to use; never assume'}, folder={capture_folder}. The material file holds pre-compaction content that may be missing from your current context; read it in full. Then report in one line: `Checkpoint saved: <note reference>` or `Checkpoint NOT saved: <reason>`.”
-- `<TEKST_RETRY>`: „Basic Memory has {n} unfinished checkpoint(s) from earlier sessions: {lista: ck, status, data, project, material}. Tell the user in one line, then complete each with `basic-memory-nas:bm-checkpoint` in hook mode, unless the user says to skip.”
-- `<TEKST_ORIENT>`: „Basic Memory (NAS) is available. Before the first substantive task, use `basic-memory-nas:bm-orient` for project {primaryProject}. If no project is configured, ask the user which project to use (use the active server default project `main`). Keep it brief; if the tools are unavailable, say so in one sentence.”
-- `<TEKST_STOP>`: „Basic Memory checkpoint {ck} is {status}. Finish it now with `basic-memory-nas:bm-checkpoint` in hook mode (write, then read back), or tell the user explicitly: `Checkpoint NOT saved: <reason>`.”
+**`confirm --key <ck>`:** dla użytkownika w terminalu. Wypisuje wpis i wymaga przepisania `ck` z `/dev/tty`. Brak terminala sterującego → odmowa (kod 2). Ustawia `saved`, `history.by: "user-confirm"`.
+
+**`dismiss --key <ck>`:** jak `confirm`, ustawia `dismissed` (świadoma rezygnacja użytkownika).
+
+**`status`:** JSON z liczbą wpisów w każdym stanie, 10 ostatnimi wpisami (bez treści materiału) i liczbą `open_sessions`.
+
+**Teksty** (angielskie, jak upstream; wartości podstawia skrypt):
+- `<TEKST_CHECKPOINT>`: „Basic Memory checkpoint REQUIRED (context was just compacted). Before any other work, use `basic-memory-nas:bm-checkpoint` in hook mode with: checkpoint_key={ck}, material files={material or 'NONE – capture failed: {reason}; write the checkpoint from your current context and say so in the note'}, project={project or 'server default (check with bm_project)'}, folder={capture_folder}. Read every material file in full. Report in one line: `Checkpoint saved: <note reference>` or `Checkpoint NOT saved: <reason>`.”
+- `<TEKST_RETRY>`: „Basic Memory has {n} unfinished checkpoint(s) for project {project}: {lista: ck, status, trigger, data, material}. Tell the user in one line, then complete each with `basic-memory-nas:bm-checkpoint` in hook mode, unless the user says to skip (then ask them to run `bm_hook.py dismiss` in a terminal).”
+- `<TEKST_ORIENT>`: „Basic Memory (NAS) is available. Before the first substantive task, use `basic-memory-nas:bm-orient` for project {primaryProject or the server default project}. During work, record decisions as they are made with `basic-memory-nas:bm-decide` and durable facts with `basic-memory-nas:bm-remember`. Keep it brief; if the tools are unavailable, say so in one sentence.”
+- `<TEKST_STOP>`: „Basic Memory checkpoint {ck} is {status}. Finish it now with `basic-memory-nas:bm-checkpoint` in hook mode (write, then read back the same note), or tell the user explicitly: `Checkpoint NOT saved: <reason>`.”
 
 ### 7.5. Format notatki checkpointu
 
-Notatka zapisywana przez `bm-checkpoint` w trybie hooka:
-- typ `session` (albo `coding_session` przy `sessionProfile: coding`, zgodnie z upstreamem), projekt `{project}`, folder `{capture_folder}`;
-- tytuł: `Checkpoint {YYYY-MM-DD HH:MM} {krótki temat}`;
-- metadata frontmatter: `checkpoint_key: {ck}`, `session_id`, `compaction_index`, `harness`, `status: active`;
-- treść **musi** zawierać linię `checkpoint_key: {ck}`, bo z niej korzysta `post-tool`;
-- sekcje: Problem, Approach, Decisions (lista numerowana z uzasadnieniem), Changes, Verification, Open questions / Blockers, Next action, Source material (krótko: segment transkryptu, `compaction_index`).
+- Typ `session` (albo `coding_session` przy `sessionProfile: coding`), projekt `{project}`, folder `{capture_folder}`.
+- Tytuł: `Checkpoint {YYYY-MM-DD HH:MM} {krótki temat}`.
+- Frontmatter: `checkpoint_key: {ck}`, `session_id`, `seq`, `trigger`, `harness`, `capture`, `material_complete`, `status: active`.
+- Treść **musi** zawierać osobną linię `checkpoint_key: {ck}`.
+- Sekcje: Problem, Approach, Decisions (lista numerowana: decyzja, uzasadnienie, źródło: material/context), Changes, Artifacts (ścieżki, SHA, PR), Verification, Open questions / Blockers, Next action, Source material (`trigger`, `capture`, `complete`, liczba pominiętych).
+- Każdy kandydat z „Decision candidates” trafia do Decisions albo do jawnej listy „Not decisions” (krótko). Pominięcie bez śladu jest błędem skilla.
 
 ---
 
 ## 8. Nadpisania i patche skilli
 
-Treść po angielsku, jak upstream.
+Treść po angielsku, jak upstream. Zmiany `bm-*` istnieją osobno dla `claude` i `openai`, bo wychodzą z różnych natywnych wariantów upstreamu (U19); zmiany `memory-*` mogą być wspólne (`all.json`).
 
-### 8.1. `overrides/skills/bm-setup/SKILL.md`
+Wszystkie modyfikacje z tej sekcji realizowane są zamianami zakotwiczonymi (6.2 pkt 3). Nazwy „nadpisanie” i „patch” oznaczają tylko zakres zmiany.
+
+### 8.1. `bm-setup` (claude, openai)
 
 1. `bm_project`. Brak narzędzi → plugin wymaga instalacji i autoryzacji w claude.ai/chatgpt.com. Koniec.
-2. Wybór projektu z listy. **Bez domyślnego** (N8).
-3. W Claude Code: zapis bloku `basicMemory` (`primaryProject`, `captureFolder`, opcjonalnie `sessionProfile`/`repository`) do `.claude/settings.json` projektu albo `~/.claude/settings.json`, według wyboru użytkownika. W czacie tylko podanie ustawień.
+2. Wybór projektu z listy; domyślnie projekt domyślny serwera (N8).
+3. Zapis bloku `basicMemory` (`primaryProject`, `captureFolder`, opcjonalnie `sessionProfile`/`repository`) do ustawień projektu albo globalnych, według wyboru użytkownika. W czacie tylko podanie ustawień.
 4. Schematy `session`, `decision`, `task`, `coding_session` przez narzędzia MCP, według logiki upstreamu.
-5. Opcjonalnie `outputStyle: basic-memory`.
+5. Opcjonalnie `outputStyle: basic-memory` (Claude).
 
 Usunięte: instalacje, `bm install`, `npx skills add`, wybór local/cloud, `basic-memory hook status`.
 
-### 8.2. `overrides/skills/bm-status/SKILL.md`
+### 8.2. `bm-status` (claude, openai)
 
-Raport zawiera:
-- projekt z ustawień;
-- `bm_project`;
-- 3 ostatnie checkpointy (`bm_search` po typie i folderze);
-- liczbę aktywnych zadań;
-- **stan kolejki checkpointów:** jeśli dostępna jest powłoka, `python3 <plugin_root>/hooks/bm_hook.py status`. Wpisy inne niż `saved` wyróżnij. Gdy powłoki nie ma (czat), wyjaśnij, że kolejka istnieje tylko lokalnie na hostach z hookami.
+Raport: projekt z ustawień; `bm_project`; 3 ostatnie checkpointy (`bm_search` po typie i folderze); liczba aktywnych zadań; **stan kolejki**: `python3 <plugin_root>/hooks/bm_hook.py status`, wyróżnione wpisy inne niż `saved`, osobno `reported_by_model` i `stale`, z instrukcją `confirm`/`dismiss`. Bez powłoki (czat): wyjaśnienie, że kolejka istnieje tylko lokalnie.
 
-### 8.3. `overrides/skills/memory-doctor/SKILL.md`
+### 8.3. `memory-doctor` (all)
 
 Wariant według G4.
 
 **G4-A:**
-1. Sprawdź dostępność Admin Tools (`portal_codemode_search`/`portal_codemode_execute`). Brak → podaj polecenie do ręcznego uruchomienia i zakończ.
-2. Znajdź kontener: `portainer_docker_proxy` GET `/containers/json` z projekcją.
-3. Sprawdzenie tożsamości środowiska: exec listy projektów musi zgadzać się z `bm_project`. Rozbieżność → STOP.
-4. Exec `basic-memory doctor --skip-self-test --json [--project X]`.
-5. Analiza i raport **tylko do odczytu**. Nigdy nie wyświetlaj zmiennych środowiskowych kontenera.
-6. Naprawy (np. `basic-memory reindex …`) wyłącznie po wyraźnej zgodzie użytkownika. Każde polecenie potwierdzane osobno.
+1. Sprawdź dostępność Admin Tools. Brak → podaj polecenie do ręcznego uruchomienia i zakończ.
+2. Znajdź kontener: GET `/containers/json` z projekcją z G4 pkt 1.
+3. Tożsamość środowiska: polecenie listy projektów zapisane w G4 (z absolutną ścieżką CLI i konfiguracją serwera) musi zgadzać się z `bm_project`. Rozbieżność → STOP.
+4. Exec `/app/.venv/bin/basic-memory doctor --skip-self-test --json [--project X]` (z tą samą konfiguracją).
+5. Raport **tylko do odczytu**. Nigdy nie pobieraj ani nie wyświetlaj `Config.Env`, pełnego inspect kontenera ani wartości zmiennych.
+6. Naprawy (np. `reindex`) wyłącznie po wyraźnej zgodzie użytkownika, każde polecenie osobno.
 7. Zakazane: usuwanie rekordów embeddingów, zmiana modelu embeddingów, `--self-test`, restart stacka.
 
 **G4-B:** punkty 1–2 i 5–7 bez zmian, punkty 3–4 zastępuje instrukcja ręczna.
 
-### 8.4. `patches/skills/bm-checkpoint.patch`
+### 8.4. `bm-checkpoint` (claude, openai)
 
-Dodaje sekcję „Hook mode”, gdy wywołanie zawiera `checkpoint_key`:
-1. Przeczytaj w całości plik materiału (narzędzie Read albo powłoka). Brak pliku → kontynuuj z samego kontekstu i zaznacz to w notatce.
-2. Projekt: z polecenia. Gdy jest `NOT SET`, zapytaj użytkownika. Nigdy nie przyjmuj domyślnego.
-3. Deduplikacja: `bm_search` po metadanych `checkpoint_key = {ck}` w projekcie (skill `memory-metadata-search`).
-   - Notatka istnieje → `bm_edit` (uzupełnienie).
-   - Notatka nie istnieje → `bm_write` według 7.5.
-4. Odczyt kontrolny: `bm_read` zapisanej notatki. Odpowiedź musi zawierać `checkpoint_key: {ck}`.
+Sekcja „Hook mode”, gdy wywołanie zawiera `checkpoint_key`:
+1. Przeczytaj w całości wszystkie pliki materiału. `NONE` → checkpoint z bieżącego kontekstu, zaznacz w Source material.
+2. Projekt z polecenia; bez ustawienia domyślny projekt serwera (`bm_project`).
+3. Deduplikacja: `bm_search` po metadanych `checkpoint_key = {ck}` w projekcie (`memory-metadata-search`).
+   - Istnieje → `bm_edit` w trybie dopisania (append), treść dopisku zawiera linię `checkpoint_key: {ck}`. Nigdy nadpisanie całej notatki.
+   - Nie istnieje → `bm_write` według 7.5.
+4. Odczyt kontrolny: `bm_read` **tej samej** notatki (identyfikator z odpowiedzi zapisu), z jawnym `project`.
 5. Raport jednej linii: `Checkpoint saved: <ref>` albo `Checkpoint NOT saved: <reason>`. Sukcesu nie wolno ogłaszać bez udanego odczytu kontrolnego.
-6. Jeśli działa tryb zastępczy G3-B, wywołaj `bm_hook.py mark`.
+6. Tylko w trybie G3-B: `bm_hook.py report --key {ck} --ref <ref>`. Nigdy `confirm`.
 
-Treść notatki łączy materiał (fakty sprzed kompakcji) i bieżący kontekst. Decyzje z materiału muszą trafić do sekcji Decisions bez pomijania.
+Treść łączy materiał i bieżący kontekst. Wszystkie „Decision candidates” rozliczone według 7.5.
 
-### 8.5. `patches/skills/bm-orient.patch`
+### 8.5. `bm-orient` (claude, openai)
 
-Brak `primaryProject` → zapytaj użytkownika o projekt. Usuń odwołania do lokalnego CLI (`basic-memory hook status`), jeśli występują.
+Brak `primaryProject` → zapytaj użytkownika. Usuń odwołania do lokalnego CLI (`basic-memory hook status`). Na końcu orientacji: przypomnienie o `bm-decide`/`bm-remember` w trakcie pracy.
 
-### 8.6. `patches/skills/memory-okf.patch`
+### 8.6. `memory-okf` (all)
 
 Przy operacjach wymagających CLI: „On self-hosted Basic Memory the CLI runs only inside the server container; use the remote execution path of `basic-memory-nas:memory-doctor` or ask the user to run the command.”
 
 ---
 
-## 9. CI
+## 9. CI i synchronizacja upstreamu
 
 ### 9.1. `ci.yml`
 
-Wyzwalacze: `push` i `pull_request`. Kroki:
-1. Checkout repo oraz upstream na `build-info.json.upstream_sha`.
-2. Python 3.12, Node 22, `npm i -g @anthropic-ai/claude-code`, `gitleaks`.
-3. `python scripts/build.py --upstream ./upstream --out . --check`
-4. `python scripts/check.py`
+Wyzwalacze: `push` (`main`, `impl/v1`, `sync/**`), `pull_request`, `workflow_dispatch`. Uprawnienia: `contents: read`. Job `validate`:
+1. Checkout z `fetch-depth: 0`.
+2. Python 3.12; Node 22 i `@anthropic-ai/claude-code` (gdy `claude` w `enabled_targets`); `gitleaks`.
+3. `python -m unittest discover -s tests`.
+4. Gdy istnieje `scripts/build.py`: `python scripts/build.py --upstream vendor/upstream --out . --target all --check`.
+5. Gdy istnieje `scripts/check.py`: `python scripts/check.py`.
+6. gitleaks na historii.
+7. Smoke test `sync_upstream.py` na przypiętym upstreamie (stan obecny, zachować).
 
-### 9.2. `sync-upstream.yml`
+Build i CI czytają wyłącznie `vendor/upstream` (bez pobierania upstreamu przy każdym przebiegu). Do czasu scalenia PR z pierwszym snapshotem krok 4 jest pomijany z komunikatem.
 
-Wyzwalacze: `schedule: cron "23 3 * * *"` (raz dziennie) i `workflow_dispatch`. Kroki:
-1. Checkout repo i upstream `main`.
-2. `build.py`, potem `check.py`. Błąd → issue „upstream sync failed” z logiem (bez sekretów). Koniec.
-3. Brak zmian → koniec.
-4. PR z gałęzi `sync/upstream-<shortsha>`. W opisie:
-   - zakres SHA;
-   - lista zmienionych skilli z liczbą zmienionych linii;
-   - zmiany hashy nadpisanych skilli jako ostrzeżenia;
-   - zmiany w hookach i manifestach upstreamu (`plugins/claude-code/hooks/**`, `plugins/codex/hooks/**`) jako sygnał do ręcznej oceny, mimo że nie są kopiowane.
-5. Etykieta `needs-review`. **Automatyczny merge po zaliczeniu CI** (N7).
-6. Ochrona `main`: wymagane zielone `ci.yml` i automatyczny merge.
+### 9.2. `sync-upstream.yml` (GH-ACTIVE)
+
+Stan: działa na `main` (U22). Wyzwalacze: `schedule: "23 3 * * *"` i `workflow_dispatch`. `concurrency` bez anulowania. Uprawnienia: `contents: write`, `issues: write`. Kroki:
+1. Checkout repo i upstream `main` (bez poświadczeń). Kod upstreamu nie jest wykonywany.
+2. `sync_upstream.py` aktualizuje `vendor/upstream` i `config/upstream.lock.json` (tylko ścieżki z listy; symlinki, nieoczekiwane rozszerzenia i pliki > 2 MB → błąd).
+3. Testy; gdy istnieje `build.py`: regeneracja `claude/` i `openai/` oraz `--check`. Po scaleniu `impl/v1` z `main` ten krok jest obowiązkowy.
+4. Brak zmian → koniec bez PR.
+5. Zmiany są commitowane i wypychane **bezpośrednio na `main`** (`chore(upstream): sync Basic Memory to <sha>`, raport zmian w treści commita: stary i nowy SHA, zmienione pliki i skille, zmiany w hookach, manifestach i licencjach upstreamu). Bez PR.
+6. Błąd w dowolnym kroku (sync, testy, build, `--check`, np. zmieniona kotwica patcha albo liczba skilli) → brak commitu i issue „upstream sync failed” z linkiem do przebiegu; otwarte issue jest aktualizowane, nie mnożone.
+7. Gałąź `main` bez ochrony (decyzja użytkownika 1.2.1). PR #3 i gałąź `sync/upstream` wycofane.
+
+`pull_request_target` zakazany.
 
 ---
 
 ## 10. Cloudflare Access (`bm.xlap.pl`)
 
-Wykonawca tylko sprawdza (odczyt przez Admin Tools → `mcp_cloudflare_execute`) i raportuje. Zmiany wymagają zgody użytkownika. Wymagane:
+Wykonawca sprawdza (odczyt przez Admin Tools i zapytania z zewnątrz bez poświadczeń) i raportuje. Zmiany wymagają zgody użytkownika. Wymagane:
 1. Aplikacja Access z managed OAuth dla MCP i polityką Allow dla tożsamości użytkownika.
-2. Dozwolone przekierowania OAuth, jeśli konfiguracja je ogranicza:
-   - callback claude.ai (adres ustalony w G0-C);
-   - `https://chatgpt.com/connector_platform_oauth_redirect`.
+2. Dozwolone przekierowania OAuth, jeśli konfiguracja je ogranicza: callback claude.ai (adres z G0-C) i `https://chatgpt.com/connector_platform_oauth_redirect`.
 3. DCR włączone.
-4. Polityka Service Auth może pozostać dla innych klientów. Plugin z niej nie korzysta.
+4. Polityka Service Auth może pozostać dla innych klientów; plugin z niej nie korzysta.
 5. Brak reguł `bypass`.
+6. **Origin niedostępny z pominięciem Cloudflare:** port serwera MCP nie jest publikowany na interfejsie dostępnym spoza NAS (G4 pkt 1, `Ports`) albo jest ograniczony do sieci tunelu. Basic Memory sam nie uwierzytelnia, więc otwarty port = dostęp bez OAuth.
+
+Testy z zewnątrz (wynik w VERIFICATION.md, bez tokenów):
+- `POST /mcp` bez autoryzacji → `401` z `WWW-Authenticate` wskazującym metadane zasobu;
+- `/.well-known/oauth-protected-resource` i `/.well-known/oauth-authorization-server` → poprawne metadane (issuer, endpointy, `registration_endpoint`);
+- nagłówek z fałszywym i z wygasłym/nieprzeznaczonym tokenem → odrzucenie, brak listy narzędzi;
+- poprawny klient (G1/G0-O) → narzędzia dostępne.
 
 ---
 
 ## 11. Fazy wdrożenia
 
-### F0. Repo, audyt i sonda platform
-1. Utwórz publiczne repo z `LICENSE`, `README.md`, `docs/PLAN.md` (ten dokument) i `docs/VERIFICATION.md`. Gałąź `impl/v1`. Ochrona `main` (wymagany CI, automatyczna integracja po testach).
-2. **Audyt istniejących źródeł**, tylko odczyt, wynik w VERIFICATION.md:
-   - **MacBook, Claude Code:**
-     - `claude plugin list`;
-     - `/mcp`;
-     - zawartość `~/.claude/skills` (nazwy);
-     - wpisy `mcpServers` w `~/.claude.json` i `~/.claude/settings.json` odnoszące się do Basic Memory;
-     - `syncClaudeAiPlugins`.
-   - **MacBook, Codex:**
-     - `~/.codex/config.toml`: sekcje `[mcp_servers.*]`, `[plugins.*]`, wpisy Basic Memory, w tym `mcp_servers.basic_memory` i `codex@basic-memory` (U18);
-     - lista pluginów;
-     - `~/.agents/plugins/marketplace.json`;
-     - `~/.agents/skills` (nazwy).
-   - **Holyclaude** (oba kontenery): to samo dla Claude Code i Codex, plus `~/.agents/` i konfiguracja `agents-sync`.
-   - **claude.ai i ChatGPT:** lista konektorów, pluginów i wgranych skilli.
-   - W audycie zapisuj nazwy i ścieżki, nigdy wartości sekretów.
-3. Sonda G0: `probe/claude` i `probe/openai`, następnie G0-C (w tym G1) i G0-O.
-4. Uzupełnij `config/build.json`: `openai_variant`, `openai_app_id`, `claude_tool_prefix` (z prefiksem docelowej nazwy pluginu, ustalonym z wzorca nazw z G1).
+### 11.0. Stan i mapowanie zadań z draftu
 
-**Akceptacja:** audyt kompletny, G1-A, wynik G0-O zapisany (R, M albo X).
+| Zadanie GPT | Faza v1.2 | Stan na 2026-11-09 |
+|---|---|---|
+| T00, T01 | F0 (dokumentacja, macierz funkcji) | zrobione (`d7e8557`, `3b232b9`) |
+| T02, T03 | F0 (worker upstreamu, CI) | zrobione, GH-ACTIVE; **do poprawy §9.2 pkt 6–7** |
+| T04 | F2 (+ część F3: zamiany zakotwiczone) | w toku: generator, `--target`, zamiany `bm-setup`/`bm-status`/`memory-doctor`, kandydaci `claude/` i `openai/`, marketplace'y (`a32b278`…`dcfc611`); brakuje `bm_hook.py`, zamian `bm-checkpoint`/`bm-orient`/`memory-okf` według 8.4–8.6, `check.py` |
+| T05 | F1 | do zrobienia |
+| T06 | F3 | do zrobienia |
+| T07 | F4–F8 | do zrobienia |
+| T09 | G4 (F3) i F12 | preflight częściowy (CLI 1.0.0, projekt `main`) |
+| T10 | F10 | do zrobienia |
+
+### F0. Repo, audyt i podpięcie platform
+1. Repo, `LICENSE` (AGPL-3.0-or-later), `README.md`, `docs/VERIFICATION.md`, gałąź `impl/v1`. Worker i CI według §9.
+2. **Audyt istniejących źródeł**, tylko odczyt, wynik w VERIFICATION.md (nazwy i ścieżki, nigdy wartości sekretów):
+   - **MacBook, Claude Code:** `claude plugin list`; `/mcp`; nazwy w `~/.claude/skills`; wpisy `mcpServers` dotyczące Basic Memory w `~/.claude.json` i `~/.claude/settings.json`; `syncClaudeAiPlugins`.
+   - **MacBook, Codex:** w `~/.codex/config.toml` sekcje `[mcp_servers.*]`, `[plugins.*]`, wpisy Basic Memory (U18); lista pluginów; `~/.agents/plugins/marketplace.json`; nazwy w `~/.agents/skills`.
+   - **Holyclaude** (oba kontenery): to samo plus `~/.agents/` i konfiguracja `agents-sync`.
+   - **claude.ai i ChatGPT:** konektory, pluginy, wgrane skille.
+3. G0 (G0-C z G1, G0-O).
+4. Uzupełnij `config/build.json` (`enabled_targets`, `openai_variant`, `openai_app_id`, `claude_tool_prefix`).
+
+**Akceptacja:** audyt kompletny; G1-A; wynik G0-O zapisany (R, M albo X); ręczny przebieg `sync-upstream` commituje na `main` albo kończy się „brak zmian”.
 
 ### F1. Hook
-1. Pobierz jeden prawdziwy transkrypt Claude Code z kompakcją (MacBook, `~/.claude/projects/...`). Ustal znacznik granicy kompakcji. **Nie commituj** transkryptu. Na jego wzór utwórz syntetyczne fixture'y w `tests/fixtures/` (fikcyjna treść).
+1. Pobierz prawdziwe transkrypty z kompakcją: Claude Code (MacBook) i, jeśli dostępny, Codex. Ustal znacznik granicy kompakcji i format. **Nie commituj** transkryptów. Na ich wzór syntetyczne fixture'y z fikcyjną treścią i numerem wersji klienta.
 2. Zaimplementuj `bm_hook.py` (7.3, 7.4).
 3. `tests/test_bm_hook.py`:
-   - limit materiału i priorytety;
-   - granica kompakcji;
+   - podział materiału, priorytety, `complete: false` i liczniki pominięć; decyzja z początku długiej sesji obecna w „Decision candidates” przy przepełnieniu budżetu;
+   - granica kompakcji, dwie kolejne kompakcje w jednej sesji (różne `ck`, właściwe segmenty);
    - uszkodzone linie;
-   - przejścia stanów `pending → written → saved` i `failed`;
-   - deduplikacja `ck`;
-   - `stop` blokuje jeden raz i nie blokuje przy `stop_hook_active`;
-   - retencja i `stale`;
+   - pięć awarii przechwycenia (`no_transcript_path`, `unreadable`, `unknown_format`, `local_write_error`, `boundary_uncertain`) i `missing_precompact` → wpis istnieje, brak cichego sukcesu;
+   - przejścia `pending → written → saved`, `failed`, `PostToolUseFailure`;
+   - **negatywne dla `saved`:** odczyt innej notatki zawierającej ten sam `ck` w tekście; odczyt w innym projekcie; `project_mismatch` przy zapisie; pusta odpowiedź; `isError`; `ck` tylko w środku linii (nie jako `checkpoint_key:`); `report` (G3-B) → `reported_by_model`, nigdy `saved`; `confirm` bez `/dev/tty` → odmowa;
+    - **routing:** projekt domyślny `main`, syntetyczny projekt testowy i rzeczywiście nieustalony projekt; nie wolno zapisać do projektu innego niż rozpoznany;
+   - `stop` blokuje raz na wpis i nie blokuje przy `stop_hook_active`;
+   - `session-end` z progiem tur; odzyskiwanie sesji bez `SessionEnd`;
+   - `guard` odrzuca `confirm` w Bash;
+   - retencja i `stale`; uszkodzony `state.json`;
    - uprawnienia `0600`/`0700`;
-   - współbieżny zapis (dwa procesy);
-   - brak `primaryProject` → `project: null` i tekst z „NOT SET”;
-   - transkrypt 50 MB < 5 s (test oznaczony `slow`).
+   - współbieżność: dwa procesy, dwa jednoczesne checkpointy różnych sesji;
+   - transkrypt 50 MB < 5 s (oznaczony `slow`).
 
-**Akceptacja:** `pytest` zielony.
+**Akceptacja:** testy zielone.
 
 ### F2. Build
-`build.py`, `check.py`, `test_build.py`, `test_negative.py`, `.gitleaks.toml`. Nadpisania tymczasowo jako kopie upstreamu.
+`build.py` (6.2), `check.py` (6.3), `test_build.py`, `test_negative.py`, `.gitleaks.toml`. Brakujące zamiany tymczasowo puste (kopia upstreamu).
 
-**Akceptacja:** `pytest` zielony, w tym testy negatywne. `check.py` na gałęzi może jeszcze zgłaszać `forbidden_strings` w tymczasowym `bm-setup`. To jest stan pośredni gałęzi, **bez merge**.
+**Akceptacja:** testy zielone, w tym negatywne. `check.py` może jeszcze zgłaszać `forbidden_strings` w tymczasowym `bm-setup` (stan pośredni gałęzi, **bez merge**).
 
 ### F3. Skille i G4
-Wykonaj G4. Napisz nadpisania (8.1–8.3) i patche (8.4–8.6).
+Wykonaj G4. Napisz nadpisania (8.1–8.3) i patche (8.4–8.6) dla każdego celu z `enabled_targets`.
 
 **Akceptacja:**
-- `build.py --check` i `check.py` zielone w całości, 24 skille;
+- `build.py --target all --check` i `check.py` zielone, 24 skille na cel;
 - `claude plugin validate --strict` OK;
-- G4 zapisana.
+- G4 zapisana (G4-A albo G4-B; G4-C = STOP do decyzji użytkownika, nie blokuje reszty F3 przy wariancie G4-B `memory-doctor`).
 
 **[MERGE]** `impl/v1` → `main`.
 
 ### F4. claude.ai
-1. Usuń sondę `bm-probe` z claude.ai. Dodaj marketplace `elconcept/basic-memory-plugin`, zainstaluj `basic-memory-nas`, połącz MCP.
-2. Test w czacie webowym:
-   - `bm_project`;
-   - `bm_write` i `bm_read` notatki `plugin-smoke-<data>` (projekt `main`, folder `tests`);
-   - skille `basic-memory-nas:memory-notes` i `basic-memory-nas:bm-orient`.
-3. Duplikaty (N3, N4): w Ustawieniach brak wgranych skilli Basic Memory; jeden konektor Basic Memory (z pluginu).
+1. Dodaj marketplace `elconcept/basic-memory-plugin`, zainstaluj `basic-memory-nas`, połącz MCP.
+2. Czat webowy: `bm_project`; `bm_write` i `bm_read` notatki `plugin-smoke-<data>` (projekt `main`, folder `tests`), **identyfikator zapisany w VERIFICATION.md**; skille `basic-memory-nas:memory-notes` i `basic-memory-nas:bm-orient`.
+3. Duplikaty (N3, N4): brak wgranych skilli Basic Memory; jeden konektor Basic Memory.
+4. §10: testy z zewnątrz.
 
-**Akceptacja:** punkty 2 i 3 spełnione.
+**Akceptacja:** punkty 2–4 spełnione.
 
 ### F5. Claude Code
 Na MacBooku i w obu kontenerach holyclaude:
 1. Wersja ≥ 2.1.273, logowanie kontem (`/status`). Klucz API → STOP dla hosta.
 2. `syncClaudeAiPlugins` ≠ `false`.
-3. **Czyszczenie z kopią (N9)** według audytu F0. Przenieś do kopii zapasowej:
-   - katalogi `~/.claude/skills/{memory-*,bm-*}` i `~/.agents/skills/{memory-*,bm-*}`;
-   - wpisy MCP Basic Memory spoza pluginu;
-   - pluginy `basic-memory@basicmachines-co`.
-
-   W `agents-sync` usuń linkowanie tych skilli. Każdy przeniesiony element wpisz do VERIFICATION.md.
+3. **Czyszczenie z kopią (N9)** według audytu F0: `~/.claude/skills/{memory-*,bm-*}`, `~/.agents/skills/{memory-*,bm-*}`, wpisy MCP Basic Memory spoza pluginu, pluginy `basic-memory@basicmachines-co`. W `agents-sync` usuń linkowanie tych skilli. Każdy element do VERIFICATION.md.
 4. Restart. `/plugin`: `basic-memory-nas` raz. `/mcp`: jeden serwer Basic Memory, *connected*. Nazwy narzędzi zgodne z `claude_tool_prefix`.
-5. `basicMemory.primaryProject` przez `/basic-memory-nas:bm-setup`:
-   - holyclaude: serwerowy domyślny projekt `main`;
-   - główny holyclaude: `main`;
-   - MacBook: według użytkownika.
-6. Test potoku D5 (MacBook):
-   1. Nowa sesja: blok orientacji.
-   2. Praca. `/compact`.
-   3. `bm_hook.py status`: wpis `pending` → po działaniu modelu `saved`.
-   4. Notatka w NAS zawiera `checkpoint_key`.
-7. Test N6:
-   - tymczasowo ustaw w `.claude/settings.local.json` testowego katalogu `primaryProject` na nieistniejący projekt, potem `/compact`;
-   - oczekiwane: `failed` w stanie, blokada `Stop` jeden raz, komunikat `Checkpoint NOT saved: …`, a w kolejnej sesji blok ponowienia;
-   - przywróć ustawienie, ponów i oczekuj `saved`.
+5. Opcjonalnie `primaryProject` przez `/basic-memory-nas:bm-setup` (bez ustawienia: domyślny projekt serwera `main`).
+6. Test potoku D5 (MacBook): orientacja; praca; `/compact`; `status`: `pending` → `saved`; notatka zawiera `checkpoint_key`.
+7. Testy awarii (MacBook, folder testowy):
+   - nieistniejący projekt w `settings.local.json` → `failed`, jedna blokada `Stop`, `Checkpoint NOT saved`, blok ponowienia w kolejnej sesji; po przywróceniu `saved`;
+   - utrata OAuth (rozłączenie serwera w `/mcp`) → `failed`/`pending`, nie `saved`;
+   - przerwanie procesu w trakcie zapisu (kill po `bm_write`, przed `bm_read`) → `written`, ponowienie w kolejnej sesji kończy się `saved` bez duplikatu notatki;
+   - zamknięcie sesji bez kompakcji → wpis `session_end`; zabicie procesu → wpis `recovered` w kolejnej sesji;
+   - błąd dysku (katalog danych tylko do odczytu) → komunikat, nie cisza.
 
-**Akceptacja:** punkty 4, 6 i 7 spełnione na MacBooku. Punkt 4 i 6 na co najmniej jednym kontenerze.
+**Akceptacja:** punkty 4, 6 i 7 na MacBooku; 4 i 6 na co najmniej jednym kontenerze.
 
 ### F6. Cowork i G5
 Test skilli i MCP jak w F4 pkt 2, potem G5.
 
-**Akceptacja:** skille i MCP działają. G5 zapisana.
+**Akceptacja:** skille i MCP działają; G5 zapisana.
 
 ### F7. ChatGPT i G2
-(Tylko przy G0-O-R lub G0-O-M.)
-1. Usuń sondę.
-2. Zainstaluj `basic-memory-nas` ścieżką z G0-O.
-3. Test jak w F4 pkt 2 (w ChatGPT).
-4. Duplikaty: jeden zestaw narzędzi Basic Memory. Plugin z rejestracji połączenia wyłączony lub ukryty według G0-O pkt 5.
+(Tylko przy G0-O-R lub G0-O-M.) Zainstaluj `basic-memory-nas` ścieżką z G0-O; G2 (O1–O8).
 
-**Akceptacja:** testy i brak duplikatów.
+**Akceptacja:** O1–O8 spełnione.
 
 ### F8. Codex i G3
-1. **Czyszczenie z kopią (N9)** według audytu F0:
-   - wyłącz i odinstaluj `codex@basic-memory`;
-   - przenieś sekcję `[mcp_servers.basic_memory]` z `config.toml` do kopii zapasowej. Edytuj plik tylko po zrobieniu jego pełnej kopii;
-   - usuń stare skille Basic Memory z `~/.agents/skills`.
-2. Instalacja `basic-memory-nas` ścieżką z G0-O.
-   - Marketplace osobisty `~/.agents/plugins/marketplace.json` (źródło git, `openai/`, `ref: main`);
-   - na holyclaude przez źródłowy `~/.agents/` i `agents-sync`.
-3. Zatwierdź (trust) hooki po przejrzeniu `hooks.json`.
-4. G3, potem test potoku D5 jak w F5 pkt 6–7 (w trybie G3-A lub G3-B).
-5. Sprawdź, że w Codex jest dokładnie jeden zestaw `bm_*`.
+1. **Czyszczenie z kopią (N9):** wyłącz i odinstaluj `codex@basic-memory`; przenieś `[mcp_servers.basic_memory]` do kopii (pełna kopia `config.toml` przed edycją); usuń stare skille z `~/.agents/skills`.
+2. Instalacja ścieżką z G0-O: marketplace osobisty (źródło git, `openai/`, `ref: main`); na holyclaude przez `~/.agents/` i `agents-sync`.
+3. Zatwierdź hooki po przejrzeniu `hooks.json`.
+4. G3, potem testy jak w F5 pkt 6–7 w zakresie dostępnych zdarzeń.
+5. Dokładnie jeden zestaw `bm_*`.
 
-**Akceptacja:** jeden zestaw `bm_*`, MCP bez `codex mcp login`, potok D5 zakończony `saved`.
+**Akceptacja:** jeden zestaw `bm_*`, MCP bez `codex mcp login`, potok D5 zakończony `saved` (G3-A) albo `reported_by_model` + `confirm` użytkownika z udokumentowanym ograniczeniem (G3-B).
 
 ### F9. Aktualizacje i G6
-1. `workflow_dispatch` dla `sync-upstream.yml`. Przy braku zmian brak PR.
-2. G6: sztuczna zmiana w `overrides/skills/bm-status/SKILL.md` (komentarz), PR, merge, obserwacja na wszystkich powierzchniach.
+1. `workflow_dispatch` dla `sync-upstream.yml`: przy braku zmian brak PR; przy zmianach PR z checkiem `validate`.
+2. G6: sztuczna zmiana w `patches/skills/bm-status/claude.json` (komentarz w `new`), PR, merge, obserwacja na wszystkich powierzchniach, łącznie z wykonaniem hooków nowej wersji.
 
-**Akceptacja:** tabela G6.
+**Akceptacja:** tabela G6 kompletna.
 
 ### F10. Test ciągłości pamięci (kryterium odbioru)
 
-Wykonaj na MacBooku w Claude Code, a następnie w Codex (jeśli F8 zaliczone). Projekt `main`, folder `tests/continuity`. **Nie wymagaj projektów z poprzednich instalacji.**
-1. Nowa sesja. Przeprowadź analizę testową (temat neutralny, np. wybór formatu kopii zapasowej). Zapisz w rozmowie 6 decyzji, każdą z unikalnym znacznikiem `CT-<data>-D1` … `D6` i krótkim uzasadnieniem.
-   - D1 i D2 podaj **na początku** sesji, potem wygeneruj długi materiał (np. poproś o szczegółowe porównania), żeby D1 i D2 znalazły się daleko od końca.
-2. `/compact`, a gdy da się wywołać, także kompakcja automatyczna.
-3. Sprawdź:
-   - stan `saved`;
-   - `bm_search` po `CT-<data>` zwraca notatkę checkpointu zawierającą **wszystkie 6** znaczników z uzasadnieniami.
-4. Zamknij sesję. Nowy proces lub `/clear`. Zapytaj: „Jakie decyzje podjęliśmy w analizie CT-<data> i dlaczego?”. Model ma je odtworzyć z Basic Memory, nie z kontekstu.
-5. Kryterium:
-   - 6/6 decyzji odtworzonych z poprawnym uzasadnieniem;
-   - każda poparta odwołaniem do notatki;
-   - zero wpisów niezakończonych w `bm_hook.py status`.
+Na MacBooku w Claude Code, potem w Codex (jeśli F8 zaliczone). Projekt `main`, folder `tests/continuity`. Każdy wariant w nowej, czystej sesji, z osobnym znacznikiem `CT-<data>-<wariant>`.
 
-   Wynik 5/6 lub mniej oznacza niezaliczony odbiór. Do VERIFICATION.md wpisz, której decyzji brakuje i na którym etapie zginęła (materiał, notatka, odtworzenie).
-6. Usuń notatki `tests/continuity` i `plugin-smoke-*` po zapisaniu wyniku.
+**Przebieg wspólny:** przeprowadź analizę testową (temat neutralny). Podejmij 6 decyzji `…-D1` … `…-D6`, każdą z krótkim uzasadnieniem. D1 i D2 podaje **asystent w pierwszych odpowiedziach** sesji (nie użytkownik), potem długi materiał, żeby znalazły się daleko od końca.
 
-**Akceptacja całego wdrożenia:** F10 zaliczony na Claude Code. Na Codex zaliczony albo ograniczenie z G3 udokumentowane.
+| Wariant | Zakończenie |
+|---|---|
+| **A** | `/compact`, potem zakończenie sesji |
+| **B** | zakończenie sesji **bez** kompakcji (`/exit`) |
+| **C** | dwie kompakcje (D1–D3 przed pierwszą, D4–D6 między pierwszą a drugą), potem zakończenie |
+
+**Sprawdzenie:**
+1. `bm_hook.py status`: zero wpisów niezakończonych dla tej sesji.
+2. `bm_search` po znaczniku zwraca notatki zawierające wszystkie 6 znaczników z uzasadnieniami.
+3. Nowy proces. Pytanie: „Jakie decyzje podjęliśmy w analizie CT-<data>-<wariant> i dlaczego?”. Model odtwarza je z Basic Memory, z odwołaniem do notatek.
+
+**Kryterium:** w każdym wariancie 6/6 decyzji z poprawnym uzasadnieniem i odwołaniem do notatki. **5/6 lub mniej = niezaliczony odbiór.** Dla każdej brakującej decyzji raport etapowy w VERIFICATION.md: transkrypt → materiał (sekcja) → wywołanie MCP → notatka → odtworzenie; wskazany pierwszy etap, na którym zginęła.
+
+**Sprzątanie:** usuń wyłącznie notatki, których identyfikatory zapisano w VERIFICATION.md podczas F4 i F10. Bez usuwania wzorcem ani całym folderem.
+
+**Akceptacja całego wdrożenia:** F10 A, B i C zaliczone na Claude Code. Na Codex zaliczone albo ograniczenie z G3 udokumentowane.
+
+### F11. Funkcje serwera (opcjonalnie, po odbiorze)
+
+Benchmark wyszukiwania po polsku (20–50 zapytań na syntetycznym projekcie testowym: tekst/wektor/hybryda, trafność, czas), test importu małego dokumentu, `bm_schema` infer/validate/diff. Każda zmiana konfiguracji serwera wyłącznie po zgodzie użytkownika (§12 pkt 4).
 
 ### Wycofanie
-- **claude.ai:** odinstaluj plugin i usuń marketplace. Przywrócenie ręcznego konektora wymaga decyzji użytkownika (C7).
+- **claude.ai:** odinstaluj plugin i usuń marketplace. Przywrócenie ręcznego konektora wymaga decyzji użytkownika.
 - **ChatGPT:** odinstaluj plugin. Połączenie z rejestracji może pozostać.
 - **Hosty:** przywróć elementy z `~/.bm-migration-backup/<ts>/` według listy w VERIFICATION.md.
-- **Repo:** `git revert` merge'a. Plugin dostaje wersję `N+1` z poprzednią zawartością.
+- **Repo:** `git revert` merge'a; plugin dostaje wersję `N+1` z poprzednią zawartością.
 
 ---
 
 ## 12. Zakazy dla wykonawcy
 
-1. Żadnych sekretów w repo, manifestach, plikach MCP, skillach, PR, issue ani w VERIFICATION.md, w tym wartości `Config.Env`.
+1. Żadnych sekretów w repo (w tym historii), manifestach, plikach MCP, skillach, PR, issue, logach CI ani VERIFICATION.md. Żadne wywołanie narzędzia nie może zwrócić modelowi wartości `Config.Env` ani nagłówków autoryzacji.
 2. Bez oficjalnych pluginów Basic Memory (Claude i Codex), bez `bm install`, bez `npx skills add` i bez lokalnego `basic-memory` na klientach.
 3. Bez zmian w Cloudflare (trasy, bypass, polityki) bez zgody użytkownika.
 4. Bez modyfikacji kontenera, stacka i bazy na NAS. Wyjątki: odczyty i exec z G4 oraz naprawy `memory-doctor` zatwierdzone przez użytkownika.
-5. Bez usuwania notatek poza `plugin-smoke-*` i `tests/continuity` utworzonymi w tym wdrożeniu.
-6. Bez ręcznej edycji `claude/` i `openai/`.
-7. Bez merge'a do `main` poza punktami [MERGE] i PR zatwierdzonymi przez użytkownika.
+5. Bez usuwania notatek poza tymi, których identyfikatory zapisano w VERIFICATION.md jako utworzone w tym wdrożeniu.
+6. Bez ręcznej edycji `claude/`, `openai/` i `vendor/upstream/`.
+7. Bez merge'a `impl/v1` do `main` poza punktami [MERGE]. Wyjątek: automatyczne commity workera upstreamu (§9.2).
 8. Bez usuwania czegokolwiek z konfiguracji hostów bez kopii (N9).
-9. Bez commitowania prawdziwych transkryptów i materiałów checkpointów.
-10. Wynik bramki spoza opisanych wariantów: STOP i zgłoszenie.
+9. Bez commitowania prawdziwych transkryptów, materiałów checkpointów i treści notatek.
+10. Bez wywoływania `bm_hook.py confirm`/`dismiss` przez model.
+11. Wynik bramki spoza opisanych wariantów: STOP i zgłoszenie.
 
 ---
 
-## 13. Rozstrzygnięcia (zatwierdzone przez recenzenta)
+## 13. Rozstrzygnięcia
 
-| Kwestia | Decyzja |
-|---|---|
-| Fallback G1 na konektor konta | Brak automatycznego fallbacku. STOP i osobna decyzja. |
-| Domyślny projekt | Brak. Jawny `primaryProject` albo pytanie. `main` jako serwerowy projekt domyślny. |
-| `memory-literary-analysis` | Wykluczony. 24 skille. |
-| Sync upstreamu | Raz dziennie, automatyczna aktualizacja po zielonym CI |
+| Kwestia | Decyzja | Źródło |
+|---|---|---|
+| Fallback G1 na konektor konta | Brak automatycznego fallbacku. STOP i osobna decyzja. | v1.1 |
+| Projekt | `primaryProject` albo domyślny projekt serwera (`main`); jedno wdrożenie vanilla, bez innych projektów | użytkownik (1.2.1) |
+| `memory-literary-analysis` | Wykluczony. 24 skille na cel. | v1.1 |
+| Sync upstreamu | Codzienny monitoring i automatyczna aktualizacja po zielonych testach. PR nie może wymagać rutynowego ręcznego zatwierdzania. | decyzja właściciela |
+| `saved` w Codex bez `PostToolUse` | Najwyżej `reported_by_model`; `saved` tylko po `confirm` użytkownika | R01 |
+| Licencja | Całe repo i własny kod: AGPL-3.0; zachowaj notices upstreamu. | decyzja właściciela |
+
 
 ---
 
 ## Źródła
 
-- Upstream `basicmachines-co/basic-memory`:
-  - `plugins/claude-code/README.md`, `plugins/claude-code/hooks/*`;
-  - `plugins/codex/hooks/hooks.json`, `plugins/codex/.mcp.json`;
-  - `scripts/build_skills_dist.py`, `scripts/validate_skills.py`;
-  - `src/basic_memory/api/app.py`, `src/basic_memory/mcp/async_client.py`;
-  - `src/basic_memory/cli/commands/hook.py` (`_transcript_turns`, `_checkpoint_note`, `CODEX_CHECKPOINT_PROMPT`);
-  - `src/basic_memory/cli/commands/doctor.py`.
+- Upstream `basicmachines-co/basic-memory` @b7d4006 (AGPL-3.0-or-later; części dodatkowo MIT): `skills/**`, `plugins/claude-code/**`, `plugins/codex/**`, `src/basic_memory/**`, `scripts/validate_skills.py`.
+
 - Claude: support.claude.com/en/articles/13837440, support.claude.com/en/articles/11175166, code.claude.com/docs/en/plugins-reference, code.claude.com/docs/en/hooks
 - OpenAI: developers.openai.com/plugins/build/plugins, developers.openai.com/plugins/deploy/submission, developers.openai.com/codex/mcp, learn.chatgpt.com/docs/plugins, help.openai.com/en/articles/12584461
 - github.com/anthropics/claude-code/issues/65426
+- To repo: `docs/REVIEW_GPT_2026-11-09.md`, `docs/REVIEW_CLAUDE_2026-11-09.md`, `docs/FEATURE_MATRIX.md`, `docs/NAS_PRECHECK.md`, `docs/IMPLEMENTATION_LOG.md`

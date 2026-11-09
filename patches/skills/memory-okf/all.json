@@ -1,0 +1,9 @@
+{
+  "source_blob_sha": "0a463c8cf52601d7e87a010d17003e245d44eed1",
+  "replacements": [
+    {
+      "old": "## Local Export and Check\n\n",
+      "new": "## Local Export and Check\n\n### Self-hosted NAS execution boundary\n\nThis deployment connects to a remote Basic Memory server over MCP. CLI operations (wiki, OKF export/check) are **server-side operations**, not commands to install or execute on the local Claude/Codex workstation. Only an authorized administration tool may execute the installed CLI in the NAS container, after confirming its actual path and target project; otherwise explain the limitation and provide a manual operator command. Never perform deletion, overwrite, migration or a destructive repair without explicit user authorization. Preparing notes through MCP remains available to connected clients.\n\n"
+    }
+  ]
+}

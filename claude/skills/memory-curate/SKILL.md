@@ -1,0 +1,252 @@
+---
+name: memory-curate
+description: "Curate the Basic Memory graph: link orphan notes, propose typed relations, merge duplicates, audit tags and folders, build hub notes. Use to organize and connect a knowledge base as notes accumulate."
+---
+
+# Memory Curate
+
+Maintain a healthy, well-connected knowledge graph. As notes accumulate, it pays to periodically organize, link, and curate the knowledge base so isolated notes become a connected graph.
+
+This skill curates the **knowledge graph** — the notes, relations, and tags that make up the knowledge base. (For the notes' content — splitting bloated notes, consolidating scattered facts, retiring stale entries — see **memory-defrag**.)
+
+## Project scope
+
+If the project is unknown, discover it with `bm_project(command="list")`.
+Pass a nonempty `project` on every note, folder, context and schema call, even
+with one project or a qualified `memory://` URL. Use the chosen project's name,
+`workspace/project`, or external ID; `<project>` below is a placeholder for it.
+Recent activity also requires `project`. Search accepts `project` for one
+project, `projects` for selected projects, or `all_projects=True` explicitly.
+Discovery and bundled manuals need no project. Keep the same scope when following
+returned paths, paginating, or recovering from a refusal.
+
+## When to Use
+
+- Asked to organize, clean up, or improve the knowledge base
+- Asked to find connections between notes, or what isn't linked yet
+- Orphan or unlinked notes are mentioned
+- Asked about duplicate or similar notes
+- Asked for help with folder organization or tag consistency
+- Phrases like "help me organize", "find related notes", "what's not linked", "clean up my notes"
+
+## Curation Capabilities
+
+### 1. Find Orphan Notes
+
+Orphans have no relations to other notes — they're islands in the graph.
+
+```python
+# List notes, then read each to inspect its Relations section
+bm_search(query="*", mode="text", page_size=50, project="<project>")
+bm_read(identifier="note-to-check", project="<project>")
+# Orphans have an empty (or missing) Relations section
+```
+
+`query="*"` lists everything only with `mode="text"`. A note whose body
+links to other notes, with wikilinks or ordinary Markdown links, is not an
+orphan even without a Relations section.
+
+If the `bm` CLI is available, `bm orphans` lists notes with no relations in one call.
+
+**What to do with orphans:**
+- Suggest relations based on content similarity
+- Ask whether they should connect to existing topics
+- Propose hub notes to gather related orphans (see capability 6)
+
+### 2. Suggest Typed Relations
+
+Analyze a note's content and propose meaningful connections.
+
+```python
+bm_read(identifier="note-to-analyze", project="<project>")
+# Pull out key terms, then search for related notes
+bm_search(query="key terms from the note", project="<project>")
+```
+
+Suggest relations based on shared topics, complementary content (problem/solution,
+question/answer), sequence (part 1 → part 2), or hierarchy (parent concept → detail).
+
+**Relation-type vocabulary:**
+- `relates_to` — general topical connection
+- `extends` — builds upon or elaborates
+- `implements` — realizes a concept or spec
+- `depends_on` — requires understanding of
+- `part_of` — hierarchy or composition
+- `contrasts_with` — presents an alternative view
+- `inspired_by` — source of insight
+- `enables` — makes something possible
+
+Custom relation types are fine — use whatever verb is descriptive.
+
+Add a confirmed relation with `bm_edit`:
+
+```python
+bm_edit(
+    identifier="API Design Decisions",
+    command="insert_after_section",
+    section="Relations",
+    content="- depends_on [[Rate Limiter]]",
+    project="<project>",
+)
+```
+
+`insert_after_section` needs the heading to exist, and orphans often have no
+`## Relations`. Then append the section instead:
+
+```python
+bm_edit(
+    identifier="API Design Decisions",
+    command="append",
+    content="\n## Relations\n- depends_on [[Rate Limiter]]",
+    project="<project>",
+)
+```
+
+### 3. Identify Similar / Duplicate Notes
+
+Find notes that may cover the same ground.
+
+```python
+bm_search(query="topic keywords", project="<project>")
+# Compare results for: similar titles, overlapping observations,
+# shared tags, close-together timestamps
+```
+
+**Actions for duplicates:**
+- **Merge** into a single comprehensive note, then redirect the loser with a relation. If you delete the loser instead, links to it from other
+  notes stay as unresolved links; repoint them first
+- Link with `supersedes` / `updates` when one revises the other
+- **Differentiate** by adding context that clarifies each note's distinct focus
+
+```python
+# Point an older note at the one that replaces it
+bm_edit(
+    identifier="DB Schema v1",
+    command="insert_after_section",
+    section="Relations",
+    content="- updates [[DB Schema v2]]",
+    project="<project>",
+)
+```
+
+### 4. Folder Organization Review
+
+```python
+bm_find(path="/", depth=3, project="<project>")
+```
+
+Look for overcrowded folders, single-note folders, inconsistent naming, and notes
+that belong elsewhere. Suggest grouping related notes into topic folders, adding
+subfolders for large categories, and a consistent naming convention. Move misplaced
+notes with `bm_move`. By default the permalink stays the same after a move, so links keep resolving. Projects with `update_permalinks_on_move` enabled rewrite it from the new path.
+
+```python
+bm_move(
+    identifier="API Design Decisions",
+    destination="architecture/api-design-decisions.md",
+    project="<project>",
+)
+```
+
+### 5. Tag Consistency
+
+```python
+bm_search(query="*", mode="text", page_size=100, project="<project>")
+# Inspect tag patterns across results
+```
+
+Look for:
+- **Variant tags** — `architecture` vs `arch`; pick one and standardize
+- **Unused tags** — present on a single note, no longer carrying weight
+- **Over-used generic tags** — so broad they don't aid discovery
+- **Missing tags** — relevant notes lacking an obvious tag
+
+### 6. Create Index / Hub Notes
+
+After finding a cluster of related notes, build a navigation hub.
+
+```python
+bm_write(
+    title="Architecture Decisions Index",
+    directory="indexes",
+    tags=["architecture", "index"],
+    note_type="index",
+    content="""# Architecture Decisions Index
+
+A hub linking architecture-related decisions and patterns.
+
+## Decisions
+- [[Database Selection Decision]]
+- [[API Design Patterns]]
+- [[Authentication Architecture]]
+
+## Patterns
+- [[Repository Pattern]]
+- [[Async Client Pattern]]
+
+## Observations
+- [index] Central hub for architecture knowledge #navigation
+
+## Relations
+- indexes [[Architecture]]""",
+    project="<project>",
+)
+```
+
+### 7. Enrich Sparse Notes
+
+Find notes lacking structure and fill them in.
+
+```python
+bm_read(identifier="sparse-note", project="<project>")
+```
+
+If the note is missing an Observations section, suggest categories. If it has no
+Relations, suggest links. If it has no tags, suggest relevant ones. If it lacks
+context, suggest adding background. Apply with `bm_edit`.
+
+## Curation Workflows
+
+Scale the pass to the request. A health check reports orphans, likely duplicates,
+recent activity (`bm_project(command="recent", project="<project>")`), and folder distribution. A deep session works
+through the capabilities above in whatever order the findings suggest. A topic pass
+maps one subject with `bm_search` and `bm_context`, fills the gaps it finds, and
+ends with a hub note.
+
+## Best Practices
+
+1. **Work incrementally.** Don't reorganize everything at once.
+2. **Confirm before changing.** Always ask before moving, merging, or editing notes.
+3. **Preserve permalinks.** Changing a permalink breaks inbound `memory://` links. Moves keep the permalink by default (unless the project enables `update_permalinks_on_move`).
+4. **Explain suggestions.** Say *why* a relation or merge makes sense.
+5. **Respect the existing system.** Enhance the user's organization — don't impose a new taxonomy.
+6. **Show the graph.** Use `bm_context` to help the user see how notes connect.
+
+## Example Conversations
+
+**User:** "Help me organize my notes"
+
+The assistant:
+1. Runs a health check on the knowledge base
+2. Reports: "You have 47 notes. I found 12 orphans and 3 potential duplicates."
+3. Asks: "Want to start by connecting the orphans, or review the duplicates first?"
+
+**User:** "Find notes that should link to my API design note"
+
+The assistant:
+1. Reads the API design note
+2. Searches for related content
+3. Suggests: "5 notes could relate —
+   - 'REST Best Practices' → `relates_to`
+   - 'Authentication Flow' → `implements`
+   - 'Rate Limiting Decision' → `extends`
+   Should I add any of these relations?"
+
+**User:** "Are there notes on similar topics?"
+
+The assistant:
+1. Analyzes titles and content for clusters
+2. Reports: "Possible overlaps —
+   - 'Auth Flow' and 'Authentication Design' cover similar ground
+   - 'DB Schema v1' and 'DB Schema v2' likely want a `supersedes` relation
+   Want to review either?"

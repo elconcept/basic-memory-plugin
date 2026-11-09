@@ -1,0 +1,18 @@
+{
+  "plugin_name": "basic-memory-nas",
+  "display_name": "Basic Memory (NAS)",
+  "mcp_server_key": "basic-memory",
+  "mcp_url": "https://bm.xlap.pl/mcp",
+  "upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5",
+  "version": "1.0.0",
+  "exclude_skills": [
+    "memory-ci-capture",
+    "memory-agents",
+    "memory-quest",
+    "memory-literary-analysis"
+  ],
+  "enabled_targets": [
+    "claude"
+  ],
+  "openai_variant": null
+}

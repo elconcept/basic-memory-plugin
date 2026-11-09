@@ -1,0 +1,20 @@
+{
+  "name": "elconcept-basic-memory",
+  "interface": {
+    "displayName": "Elconcept Basic Memory (Preview)"
+  },
+  "plugins": [
+    {
+      "name": "basic-memory-nas",
+      "source": {
+        "source": "local",
+        "path": "./openai"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

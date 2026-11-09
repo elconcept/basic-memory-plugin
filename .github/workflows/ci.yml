@@ -51,3 +51,68 @@ jobs:
             --sha "$(git -C upstream rev-parse HEAD)" \
             --report "$RUNNER_TEMP/bm-upstream-report.md"
           python -c 'import json,os;from pathlib import Path;p=Path(os.environ["RUNNER_TEMP"])/"bm-upstream-lock.json";d=json.loads(p.read_text());assert d["file_count"] >= 35,d'
+
+      - name: Build and verify Claude candidate from pinned upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target claude
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target claude --check
+      - name: Validate portable OpenAI package candidate (not authorized for deployment)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target openai --openai-variant M
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target openai --openai-variant M --check
+
+  publish-candidate:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/impl/v1'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 15
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: impl/v1
+          persist-credentials: true
+      - name: Checkout pinned upstream (do not execute upstream code)
+        uses: actions/checkout@v4
+        with:
+          repository: basicmachines-co/basic-memory
+          ref: b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5
+          path: upstream
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate candidates, no hooks or credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C upstream rev-parse HEAD)" = "$(python -c 'import json;print(json.load(open("config/build.json"))["upstream_sha"])')"
+          python scripts/build.py --upstream upstream --out . --target claude
+          python scripts/build.py --upstream upstream --out . --target claude --check
+          python scripts/build.py --upstream upstream --out . --target openai --openai-variant M
+          python scripts/build.py --upstream upstream --out . --target openai --openai-variant M --check
+      - name: Create a draft PR for generated assets
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: build/candidate-artifacts
+          base: impl/v1
+          draft: true
+          delete-branch: true
+          commit-message: 'T04f: generate audited Claude and OpenAI candidate assets'
+          title: 'DRAFT: generated Basic Memory plugin candidates (T04f)'
+          body: |
+            Generated from pinned Basic Memory upstream. No credentials, no local Basic Memory daemon, and no lifecycle hooks included.
+            **DO NOT deploy until platform OAuth tests, license review, and T05 hooks complete.**
+            Every SKILL.md comes from upstream or an anchored adapter patch. Independently review changed assets and CI.
+          add-paths: |
+            claude
+            openai

@@ -1,0 +1,14 @@
+{
+  "replacements": [
+    {
+      "old": "1. **CLI reachable?** Run `basic-memory --version`, then `bm --version`, then\n   `uvx --prerelease=allow basic-memory --version`. If no launcher resolves, report the CLI status as\n   unavailable and continue with MCP/config checks. The plugin hooks can still use\n   their uv-managed environment.\n\n",
+      "new": "1. **Remote MCP reachable?** Call `bm_project(command=\"list\")`; record whether it succeeds and the source connector. The client does not install Basic Memory CLI. Server diagnostics, if authorized, execute exclusively on NAS. If no MCP tool is available, mark the status unavailable; do not guess.\n\n\n\n"
+    },
+    {
+      "old": "3. **Core hook health.** With the first available launcher, run\n   `basic-memory hook status --harness claude --project-dir <project-root>`.\n   Report its shared inbox path, pending envelopes, archived envelopes, pending\n   checkpoint requests, last\n   flush, settings state, resolved primary project, capture state, capture folder,\n   Basic Memory version, and uv version. Inbox counts are global across supported\n   harnesses; do not attribute a backlog solely to Claude. Treat this command's\n   settings resolution as canonical for hook behavior; if it disagrees with the\n   manually merged config, show the mismatch. If no launcher resolves, mark these\n   fields unavailable and continue.\n\n",
+      "new": "3. **Core hook health.** The original upstream hook CLI is intentionally not bundled. Until the reviewed T05 NAS adapter is installed and event-tested, report local checkpoint and hook status as **not implemented / unverified**. Never run `uvx` or a local Basic Memory daemon to simulate status.\n\n\n\n"
+    }
+  ],
+  "verified_against_upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5",
+  "source_blob_sha": "b3803be61d183c53179658f4820a55b94307c3f3"
+}

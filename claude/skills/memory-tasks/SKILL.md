@@ -1,0 +1,204 @@
+---
+name: memory-tasks
+description: "Task management via Basic Memory schemas: create, track, and resume structured tasks that survive context compaction. Uses BM's schema system for uniform notes queryable through the knowledge graph."
+---
+
+# Memory Tasks
+
+Manage work-in-progress using Basic Memory's schema system. Tasks are just notes with `type: Task` — they live in the knowledge graph, validate against a schema, and survive context compaction.
+
+## Project scope
+
+If the project is unknown, discover it with `bm_project(command="list")`.
+Pass a nonempty `project` on every note, folder, context and schema call, even
+with one project or a qualified `memory://` URL. Use the chosen project's name,
+`workspace/project`, or external ID; `<project>` below is a placeholder for it.
+Recent activity also requires `project`. Search accepts `project` for one
+project, `projects` for selected projects, or `all_projects=True` explicitly.
+Discovery and bundled manuals need no project. Keep the same scope when following
+returned paths, paginating, or recovering from a refusal.
+
+## When to Use
+
+- **Starting multi-step work** (3+ steps, or anything that might outlast the context window)
+- **After compaction/restart** — search for active tasks to resume
+- **Pre-compaction flush** — update all active tasks with current state
+- **On demand** — user asks to create, check, or manage tasks
+
+## Task Schema
+
+Tasks use the BM schema system. The schema note lives at `schema/Task.md`:
+
+```yaml
+---
+title: Task
+type: schema
+entity: Task
+version: 1
+schema:
+  description: string, what needs to be done
+  status?(enum, current state): [active, blocked, done, abandoned]
+  assigned_to?: string, who is working on this
+  steps?(array): string, ordered steps to complete
+  current_step?: integer, which step number we're on (1-indexed)
+  context?: string, key context needed to resume after memory loss
+  started?: string, when work began
+  completed?: string, when work finished
+  blockers?(array): string, what's preventing progress
+  parent_task?: Task, parent task if this is a subtask
+settings:
+  validation: warn
+---
+```
+
+## Creating a Task
+
+When work qualifies, create a task note. Use `bm_write` with `note_type="Task"` and put queryable fields in `metadata`:
+
+```python
+bm_write(
+  title="Descriptive task name",
+  directory="tasks",
+  note_type="Task",
+  metadata={
+    "status": "active",
+    "priority": "high",
+    "assigned_to": "claude",
+    "current_step": 1,
+    "steps": ["First step", "Second step", "Third step"]
+  },
+  tags=["task"],
+  content="""# Descriptive task name
+
+## Observations
+- [description] What needs to be done, concisely
+- [status] active
+- [assigned_to] claude
+- [current_step] 1
+
+## Steps
+1. [ ] First concrete step
+2. [ ] Second concrete step
+3. [ ] Third concrete step
+
+## Context
+What future-you needs to pick up this work. Include:
+- Key file paths and repos involved
+- Decisions already made and why
+- What was tried and what worked/didn't
+- Where to look for related context""",
+  project="<project>",
+)
+```
+
+**Why both frontmatter and observations?** Fields in `metadata` (stored as frontmatter) power `bm_search` with `filters`. Fields as observations (`- [status] active`) power `bm_schema(command="validate", project="<project>")`. Include queryable fields in both places for full coverage.
+
+### Key Principles
+
+- **Steps are concrete and checkable** — "Implement X in file Y", not "figure out stuff"
+- **Context is for post-amnesia resumption** — Write it as if explaining to a smart person who knows nothing about what you've been doing
+- **Relations link to other entities** — `parent_task [[Other Task]]`, `related_to [[Some Note]]`
+- **Note types are normalized to snake_case** — `bm_write(note_type="Task", project="<project>")` stores `type: task`, and `note_types=["Task"]` or `note_types=["task"]` both match it.
+
+## Resuming After Compaction
+
+On session start or after compaction:
+
+1. **Search for active tasks:**
+   ```python
+   bm_search(note_types=["task"], filters={"status": "active"}, project="<project>")
+   ```
+
+2. **Read the task note** to get full context
+
+3. **Resume from `current_step`** using the `context` field
+
+4. **Update as you progress** — increment `current_step`, update context, check off steps
+
+## Updating Tasks
+
+As work progresses, update the task note:
+
+```markdown
+## Steps
+1. [x] First step — done, resulted in X
+2. [x] Second step — done, changed approach because Y
+3. [ ] Third step — next up
+
+## Context
+Updated context reflecting current state...
+```
+
+Read the task as JSON first and pass its checksum as `expected_checksum` on each
+edit. Two sessions often update the same task, for example in a pre-compaction
+flush; a revision conflict means the other one wrote first, so re-read before
+writing.
+
+Update frontmatter too, with `command="set_metadata"` and the `metadata` parameter (the body stays unchanged):
+```python
+task = bm_read(identifier="tasks/descriptive-task-name", output_format="json", project="<project>")
+bm_edit(
+  identifier="tasks/descriptive-task-name",
+  command="set_metadata",
+  metadata={"current_step": 3},
+  expected_checksum=task["checksum"],
+  project="<project>",
+)
+```
+
+## Completing Tasks
+
+When done:
+```yaml
+status: done
+completed: YYYY-MM-DD
+```
+
+Add a brief summary of what was accomplished and any follow-up needed.
+
+## Pre-Compaction Flush
+
+When a compaction event is imminent:
+
+1. Find all active tasks: `bm_search(note_types=["task"], filters={"status": "active"}, project="<project>")`
+2. For each, update:
+   - `current_step` to reflect actual progress
+   - `context` with everything needed to resume
+   - Step checkboxes to show what's done
+3. Context that isn't written down is lost at compaction
+
+## Querying Tasks
+
+With BM's schema system, tasks are fully queryable:
+
+| Query | What it finds |
+|-------|--------------|
+| `bm_search(note_types=["task"], project="<project>")` | All tasks |
+| `bm_search(note_types=["task"], filters={"status": "active"}, project="<project>")` | Active tasks |
+| `bm_search(note_types=["task"], filters={"status": "blocked"}, project="<project>")` | Blocked tasks |
+| `bm_search(note_types=["task"], filters={"assigned_to": "claude"}, project="<project>")` | My tasks |
+| `bm_search("blockers", note_types=["task"], project="<project>")` | Tasks with blockers |
+| `bm_search(note_types=["task"], time_kind="due", valid_overlaps="[2026-10-14,2026-10-21)", project="<project>")` | Tasks with a step due this week |
+| `bm_schema(command="validate", note_type="Task", project="<project>")` | Validate all tasks against schema |
+| `bm_schema(command="diff", note_type="Task", project="<project>")` | Detect drift between schema and actual task notes |
+
+### Due Dates
+
+Give a step or the task a due date with a qualifier (see **memory-notes**), so
+"what's due" is one search:
+
+```markdown
+- [deadline] @due:2026-10-20 Draft ready for review
+```
+
+A day-precision due date counts from that day onward, so a due-this-week search
+also returns overdue items.
+
+## Guidelines
+
+- **One task per unit of work** — Don't cram multiple projects into one task
+- **Externalize early** — write things down when you notice them
+- **Context > steps** — Steps tell you what to do; context tells you why and how
+- **Close finished tasks** — Don't leave completed work as `active`
+- **Link related tasks** — Use `parent_task [[X]]` or relations to connect related work
+- **Schema validation is your friend** — Run `bm_schema(command="validate", note_type="Task", project="<project>")` periodically to catch incomplete tasks
