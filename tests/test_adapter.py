@@ -105,6 +105,22 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(settings(self.root, "claude", {"HOME": str(home)})["primaryProject"], "proj-a")
         self.assertEqual(settings(self.root / "unused", "codex", {"HOME": str(home)})["primaryProject"], "main")
 
+    def test_capture_failure_is_recorded_not_silent(self):
+        broken = Adapter(self.store, "claude", dict(self.config, materialMaxBytes=200))
+        entry = broken.pre_compact(self.event)
+        stored = self.store.get(entry["ck"])
+        self.assertEqual(stored["status"], "pending")
+        self.assertEqual(stored["capture"], "failed:local_write_error")
+        self.assertEqual(stored["material"], [])
+
+    def test_malformed_hook_payload_is_fail_open(self):
+        import io
+        from src.hooks.adapter import main
+        env = dict(os.environ, HOME=str(self.root), CLAUDE_PLUGIN_DATA=str(self.root / "new-store"))
+        self.assertEqual(main(["session-start"], io.StringIO("[]"), env), 0)
+        self.assertEqual(main(["pre-compact"], io.StringIO("broken"), env), 0)
+        self.assertEqual(main(["status"], io.StringIO(""), env), 0)
+
     def test_only_structured_ref_is_accepted(self):
         self.assertIsNone(_ref({"content": [{"type": "text", "text": "Saved! id notes/abc"}]}))
         self.assertEqual(_ref({"content": [{"type": "text", "text": '{"permalink":"notes/abc"}'}]}), "notes/abc")
