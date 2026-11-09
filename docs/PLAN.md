@@ -275,20 +275,19 @@ basic-memory-plugin/
 │   ├── schemas/
 │   ├── output-styles/
 │   ├── LICENSE
-│   └── NOTICE
+│   └── UPSTREAM_ATTRIBUTION.md
 ├── openai/                             # GENEROWANE
 │   ├── plugin.json
 │   ├── .app.json | mcp.json            # wg G0-O
 │   ├── skills/<24>/
 │   ├── hooks/{hooks.json,bm_hook.py}
 │   ├── LICENSE
-│   └── NOTICE
+│   └── UPSTREAM_ATTRIBUTION.md
 ├── vendor/upstream/                    # snapshot upstreamu (worker, tylko MIT-owe ścieżki + LICENSE)
 ├── src/
 │   ├── hooks/bm_hook.py
 │   └── templates/{claude,openai}/...
-├── overrides/skills/<skill>/{claude,openai}.md
-├── patches/skills/<skill>.{claude,openai}.patch
+├── patches/skills/<skill>/{claude,openai,all}.json   # zakotwiczone zamiany old→new, przypięte do upstream_sha
 ├── config/{build.json,upstream.lock.json}
 ├── scripts/{build.py,check.py,sync_upstream.py}
 ├── tests/
@@ -302,7 +301,7 @@ basic-memory-plugin/
 ├── .gitleaks.toml
 ├── .github/workflows/{ci.yml,sync-upstream.yml}
 ├── LICENSE
-├── NOTICE
+├── NOTICE                              # podział licencji (U20) i atrybucja
 └── README.md
 ```
 
@@ -347,7 +346,7 @@ Wartości uzupełniane po bramkach:
 - `openai_variant` (`"R"`/`"M"`) i `openai_app_id` (nie jest sekretem): z G0-O;
 - `claude_tool_prefix`: z G1, np. `mcp__plugin_basic-memory-nas_basic-memory__`.
 
-Build celu z `enabled_targets`, dla którego wymagane pole ma `null`, kończy się błędem. Cel spoza `enabled_targets` nie jest generowany ani sprawdzany.
+Build celu z `enabled_targets`, dla którego wymagane pole ma `null`, kończy się błędem. Cel spoza `enabled_targets` może istnieć w repo jako **kandydat** (stan obecny: `openai/` w wariancie M, `dcfc611`) i jest sprawdzany `--check`, ale nie jest opisywany jako gotowy, a jego wpis w `.agents/plugins/marketplace.json` ma w opisie „candidate – not verified” do czasu G0-O.
 
 ### 6.2. `scripts/build.py`: algorytm
 
@@ -356,13 +355,13 @@ Wywołanie: `build.py --upstream vendor/upstream --out . --target claude|openai|
 Dla każdego celu:
 1. Źródła: `vendor/upstream/skills/memory-*/` (bez `evals/`) i natywne `bm-*` celu (`plugins/claude-code/skills/` dla `claude`, `plugins/codex/skills/` dla `openai`).
 2. Odrzuć `exclude_skills` i skille z `metadata.internal: true` (własny parser frontmattera; nie importuj `validate_skills.py`, N10).
-3. Nadpisania z `overrides/skills/<skill>/<cel>.md`. Brak pliku dla celu → exit 1. W `build-info.json` zapisz SHA-256 upstreamowego `SKILL.md` każdego nadpisanego skilla, per cel (`override_upstream_hashes`). Zmiana tego hasha w PR synchronizacji = ostrzeżenie do przeglądu.
-4. Patche `patches/skills/<skill>.<cel>.patch`: `git apply --3way`. Konflikt → exit 1.
+3. Modyfikacje skilli wyłącznie jako **zakotwiczone zamiany** z `patches/skills/<skill>/<cel>.json` albo `all.json` (stan zaimplementowany w `8f086a0`, `303fb45`): lista `{old, new}` przypięta do `upstream_sha`. Każde `old` musi wystąpić w upstreamowym pliku dokładnie raz; brak kotwicy, wielokrotne trafienie albo inny `upstream_sha` → exit 1 i ręczny przegląd w PR synchronizacji. Pełne przepisanie pliku dozwolone tylko jako jedna zamiana całej treści, z uzasadnieniem w PR.
+4. Skill z listy `overrides`/`patches` w `build.json` bez pliku zamian dla celu → exit 1. W `build-info.json` zapisz SHA-256 upstreamowego `SKILL.md` każdego modyfikowanego skilla, per cel.
 5. `namespace_rewrites` we wszystkich `*.md`.
 6. `forbidden_strings`: trafienie → exit 1.
 7. Wyczyść i wypełnij `<cel>/skills/`. Dla `claude` skopiuj `schemas/` i `output-styles/`.
 8. Manifesty z szablonów (`{{version}}`, `{{plugin_name}}`, `{{display_name}}`, `{{mcp_url}}`, `{{mcp_server_key}}`, `{{claude_tool_prefix}}`, `{{openai_app_id}}`). Dla OpenAI **tylko** plik wariantu.
-9. Skopiuj `src/hooks/bm_hook.py`, `LICENSE`, `NOTICE`.
+9. Skopiuj `src/hooks/bm_hook.py`, `LICENSE` i wygeneruj `UPSTREAM_ATTRIBUTION.md` (pin, ścieżki źródeł, podstawa MIT według U20: `skills/README.md`, `plugins/*/…/plugin.json`).
 10. Wersja: hash zawartości bez pól wersji; przy zmianie `N+1`. `build-info.json`: `version`, `content_hash`, `upstream_sha` (z `config/upstream.lock.json`), `targets`, `override_upstream_hashes`, `skills` per cel.
 11. Liczba skilli = `expected_skill_count[cel]`. Inaczej exit 1.
 12. `--check`: build do katalogu tymczasowego i porównanie z repo. Różnica → exit 1.
@@ -377,15 +376,15 @@ Dla każdego celu:
    - `Authorization` i `Bearer` same w sobie nie są błędem;
    - allowlist wyłącznie: `build-info.json` (pola `*_hash`, `upstream_sha`), `config/upstream.lock.json` (`upstream_sha`, `snapshot_digest`), `tests/fixtures/` (wyłącznie oznaczone fikcyjne wartości).
 5. Kontrole statyczne:
-   - `overrides/skills/memory-doctor/*.md` nie zawiera `Config.Env` ani `/containers/{id}/json` bez `select` (R06);
+   - wynikowy `*/skills/memory-doctor/SKILL.md` nie zawiera `Config.Env` ani `/containers/{id}/json` bez `select` (R06);
    - żaden plik w `src/` nie zawiera nagłówka licencji AGPL ani fragmentów oznaczonych jako pochodzące z `src/basic_memory` (N10);
    - `bm_hook.py` nie importuje `socket`, `urllib`, `http`, `ssl`, `subprocess` (N5).
 6. Testy (`python -m unittest`), w tym `tests/test_negative.py`:
-   - wstrzyknięte `npx skills add` w nadpisaniu → exit 1;
+   - wstrzyknięte `npx skills add` w zamianie → exit 1;
+   - kotwica `old` nieobecna albo występująca wielokrotnie → exit 1;
    - przywrócony wykluczony skill → zła liczba skilli → exit 1;
    - fałszywy JWT w `claude/` → skan wykrywa;
-   - konflikt patcha → exit 1;
-   - brak nadpisania dla jednego celu → exit 1;
+   - brak pliku zamian dla jednego celu → exit 1;
    - `openai` w `enabled_targets` przy `openai_variant: null` → exit 1;
    - `Config.Env` w `memory-doctor` → exit 1.
 
@@ -604,9 +603,11 @@ Powody `capture: failed:…`: `no_transcript_path`, `unreadable`, `unknown_forma
 
 ## 8. Nadpisania i patche skilli
 
-Treść po angielsku, jak upstream. Każde nadpisanie i patch istnieje osobno dla `claude` i `openai`, wychodząc z natywnego wariantu upstreamu danego celu (U19).
+Treść po angielsku, jak upstream. Zmiany `bm-*` istnieją osobno dla `claude` i `openai`, bo wychodzą z różnych natywnych wariantów upstreamu (U19); zmiany `memory-*` mogą być wspólne (`all.json`).
 
-### 8.1. `overrides/skills/bm-setup/{claude,openai}.md`
+Wszystkie modyfikacje z tej sekcji realizowane są zamianami zakotwiczonymi (6.2 pkt 3). Nazwy „nadpisanie” i „patch” oznaczają tylko zakres zmiany.
+
+### 8.1. `bm-setup` (claude, openai)
 
 1. `bm_project`. Brak narzędzi → plugin wymaga instalacji i autoryzacji w claude.ai/chatgpt.com. Koniec.
 2. Wybór projektu z listy. **Bez domyślnego** (N8).
@@ -616,11 +617,11 @@ Treść po angielsku, jak upstream. Każde nadpisanie i patch istnieje osobno dl
 
 Usunięte: instalacje, `bm install`, `npx skills add`, wybór local/cloud, `basic-memory hook status`.
 
-### 8.2. `overrides/skills/bm-status/{claude,openai}.md`
+### 8.2. `bm-status` (claude, openai)
 
 Raport: projekt z ustawień; `bm_project`; 3 ostatnie checkpointy (`bm_search` po typie i folderze); liczba aktywnych zadań; **stan kolejki**: `python3 <plugin_root>/hooks/bm_hook.py status`, wyróżnione wpisy inne niż `saved`, osobno `reported_by_model`, nieprzypisane i `stale`, z instrukcją `confirm`/`dismiss`/`assign`. Bez powłoki (czat): wyjaśnienie, że kolejka istnieje tylko lokalnie.
 
-### 8.3. `overrides/skills/memory-doctor/{claude,openai}.md`
+### 8.3. `memory-doctor` (all)
 
 Wariant według G4.
 
@@ -635,7 +636,7 @@ Wariant według G4.
 
 **G4-B:** punkty 1–2 i 5–7 bez zmian, punkty 3–4 zastępuje instrukcja ręczna.
 
-### 8.4. `patches/skills/bm-checkpoint.{claude,openai}.patch`
+### 8.4. `bm-checkpoint` (claude, openai)
 
 Sekcja „Hook mode”, gdy wywołanie zawiera `checkpoint_key`:
 1. Przeczytaj w całości wszystkie pliki materiału. `NONE` → checkpoint z bieżącego kontekstu, zaznacz w Source material.
@@ -649,11 +650,11 @@ Sekcja „Hook mode”, gdy wywołanie zawiera `checkpoint_key`:
 
 Treść łączy materiał i bieżący kontekst. Wszystkie „Decision candidates” rozliczone według 7.5.
 
-### 8.5. `patches/skills/bm-orient.{claude,openai}.patch`
+### 8.5. `bm-orient` (claude, openai)
 
 Brak `primaryProject` → zapytaj użytkownika. Usuń odwołania do lokalnego CLI (`basic-memory hook status`). Na końcu orientacji: przypomnienie o `bm-decide`/`bm-remember` w trakcie pracy.
 
-### 8.6. `patches/skills/memory-okf.{claude,openai}.patch`
+### 8.6. `memory-okf` (all)
 
 Przy operacjach wymagających CLI: „On self-hosted Basic Memory the CLI runs only inside the server container; use the remote execution path of `basic-memory-nas:memory-doctor` or ask the user to run the command.”
 
@@ -716,7 +717,7 @@ Testy z zewnątrz (wynik w VERIFICATION.md, bez tokenów):
 |---|---|---|
 | T00, T01 | F0 (dokumentacja, macierz funkcji) | zrobione (`d7e8557`, `3b232b9`) |
 | T02, T03 | F0 (worker upstreamu, CI) | zrobione, GH-ACTIVE; **do poprawy §9.2 pkt 6–7** |
-| T04 | F2 | częściowo (`a32b278`: generator, `--target`) |
+| T04 | F2 (+ część F3: zamiany zakotwiczone) | w toku: generator, `--target`, zamiany `bm-setup`/`bm-status`/`memory-doctor`, kandydaci `claude/` i `openai/`, marketplace'y (`a32b278`…`dcfc611`); brakuje `bm_hook.py`, zamian `bm-checkpoint`/`bm-orient`/`memory-okf` według 8.4–8.6, `NOTICE`, `check.py` |
 | T05 | F1 | do zrobienia |
 | T06 | F3 | do zrobienia |
 | T07 | F4–F8 | do zrobienia |
@@ -758,7 +759,7 @@ Testy z zewnątrz (wynik w VERIFICATION.md, bez tokenów):
 **Akceptacja:** testy zielone.
 
 ### F2. Build
-`build.py` (6.2), `check.py` (6.3), `test_build.py`, `test_negative.py`, `.gitleaks.toml`, `NOTICE`. Nadpisania i patche tymczasowo jako kopie upstreamu per cel. Scalenie PR snapshotu `sync/upstream` po przeglądzie (decyzja użytkownika), bo build wymaga `vendor/upstream`.
+`build.py` (6.2), `check.py` (6.3), `test_build.py`, `test_negative.py`, `.gitleaks.toml`, `NOTICE`. Brakujące zamiany tymczasowo puste (kopia upstreamu). Scalenie PR snapshotu `sync/upstream` po przeglądzie (decyzja użytkownika), bo build wymaga `vendor/upstream`.
 
 **Akceptacja:** testy zielone, w tym negatywne. `check.py` może jeszcze zgłaszać `forbidden_strings` w tymczasowym `bm-setup` (stan pośredni gałęzi, **bez merge**).
 
@@ -819,7 +820,7 @@ Test skilli i MCP jak w F4 pkt 2, potem G5.
 
 ### F9. Aktualizacje i G6
 1. `workflow_dispatch` dla `sync-upstream.yml`: przy braku zmian brak PR; przy zmianach PR z checkiem `validate`.
-2. G6: sztuczna zmiana w `overrides/skills/bm-status/claude.md` (komentarz), PR, merge, obserwacja na wszystkich powierzchniach, łącznie z wykonaniem hooków nowej wersji.
+2. G6: sztuczna zmiana w `patches/skills/bm-status/claude.json` (komentarz w `new`), PR, merge, obserwacja na wszystkich powierzchniach, łącznie z wykonaniem hooków nowej wersji.
 
 **Akceptacja:** tabela G6 kompletna.
 

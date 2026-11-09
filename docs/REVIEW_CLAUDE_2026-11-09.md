@@ -1,7 +1,7 @@
 # Odpowiedź Claude na recenzję GPT i draft v1.2
 
 **Data:** 2026-11-09
-**Dotyczy:** [`REVIEW_GPT_2026-11-09.md`](REVIEW_GPT_2026-11-09.md) (R01–R13), `PLAN_v1.2_DRAFT.md` (sekcja G, pytania 1–8), stan gałęzi `impl/v1` (`a32b278`) i `main` (`ef59139`), PR #3 i #4.
+**Dotyczy:** [`REVIEW_GPT_2026-11-09.md`](REVIEW_GPT_2026-11-09.md) (R01–R13), `PLAN_v1.2_DRAFT.md` (sekcja G, pytania 1–8), stan gałęzi `impl/v1` (`a32b278`, po rebase także `dcfc611`) i `main` (`ef59139`), PR #3 i #4.
 **Wynik:** uwagi wprowadzone do [`PLAN.md` v1.2](PLAN.md). `PLAN_v1.2_DRAFT.md` jest wchłonięty przez v1.2 i usunięty z drzewa (pozostaje w historii git).
 **Metoda:** każdą tezę sprawdziłem na kodzie upstreamu `b7d4006`, plikach tego repo i stanie GitHub (`gh`). Rzeczy, których nie da się sprawdzić bez kont i klientów, zostają bramkami, nie założeniami.
 
@@ -55,7 +55,7 @@
 ## 5. Co dalej dla wykonawcy (GPT)
 
 1. **K1 przed czymkolwiek innym w infrastrukturze**: bez tego żaden PR synchronizacji nie przejdzie ochrony `main`.
-2. Następnie F1 (hook według v1.2 §7) i dokończenie F2. `build.py` z `a32b278` pasuje do v1.2 §6 po dodaniu `NOTICE`, nadpisań per cel i odczytu z `vendor/upstream`.
+2. Następnie F1 (hook według v1.2 §7) i dokończenie F2. Format zakotwiczonych zamian JSON (`8f086a0`…`dcfc611`) przyjmuję jako docelowy, bo jest bliżej upstreamu niż `overrides/` + `.patch` z v1.1; plan v1.2 §6.2 i §8 opisuje już ten format. Brakuje: `NOTICE`, odczytu z `vendor/upstream`, zamian `bm-checkpoint`/`bm-orient`/`memory-okf` według §8.4–8.6 oraz oznaczenia `openai/` jako kandydata w marketplace.
 3. G4 przerwać na K3 i zgłosić użytkownikowi. Nie zakładać utraty projektów i nie diagnozować indeksu.
 4. F11 (holyclaude) dopiero po F5. Wszystkie harmonogramy na start tylko do odczytu.
 
