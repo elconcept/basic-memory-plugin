@@ -147,6 +147,45 @@ def select_skills(upstream: Path, overrides: Path, target: str) -> dict[str, byt
     return files
 
 
+def local_hook_assets() -> dict[str, bytes]:
+    """Package independently authored local adapters only; no upstream CLI code."""
+    root = Path(__file__).resolve().parents[1]
+    result = {"src/__init__.py": b"", "src/hooks/__init__.py": b""}
+    for name in ("adapter.py", "capture.py", "state_store.py"):
+        target = root / "src/hooks" / name
+        if not target.is_file():
+            raise ValueError(f"Local hook module missing: {name}")
+        result[f"src/hooks/{name}"] = target.read_bytes()
+    wrapper = (
+        "from pathlib import Path\n"
+        "import sys\n"
+        "sys.path.insert(0, str(Path(__file__).resolve().parents[1]))\n"
+        "from src.hooks.adapter import main\n"
+        "if __name__ == '__main__':\n"
+        "    sys.exit(main())\n"
+    )
+    result["hooks/bm_hook.py"] = wrapper.encode("utf-8")
+    def command(verb: str) -> dict:
+        return {"type": "command",
+                "command": f'python3 "{chr(36)}{{CLAUDE_PLUGIN_ROOT}}/hooks/bm_hook.py" {verb} --harness claude',
+                "timeout": 15}
+    hook_events = {
+        "SessionStart": [{"hooks": [command("session-start")]}],
+        "PreCompact": [{"hooks": [command("pre-compact")]}],
+        "PostToolUse": [{"matcher": r"mcp__.*__bm_(write|edit|read)",
+                         "hooks": [command("post-tool")]}],
+        "PostToolUseFailure": [{"matcher": r"mcp__.*__bm_(write|edit|read)",
+                                "hooks": [command("post-tool-failure")]}],
+        "SessionEnd": [{"hooks": [command("session-end")]}],
+        "Stop": [{"hooks": [command("stop")]}],
+    }
+    result["hooks/hooks.json"] = json_bytes({
+        "description": "Offline-only Basic Memory checkpoint control; writes/reads use MCP from the agent",
+        "hooks": hook_events,
+    })
+    return result
+
+
 def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str, openai_variant: str | None, app_id: str | None) -> dict[str, bytes]:
     assets = select_skills(upstream, overrides, target)
     assets["UPSTREAM_ATTRIBUTION.md"] = (
@@ -170,7 +209,8 @@ def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str
         assets[".mcp.json"] = json_bytes({
             "mcpServers": {cfg["mcp_server_key"]: {"type": "http", "url": cfg["mcp_url"]}}
         })
-        # No hooks until tested (separate T05 checkpoint task).
+        # Candidate only. Lifecycle hook execution requires Claude G1 confirmation.
+        assets.update(local_hook_assets())
     else:
         ext: dict = {"interface": {
             "displayName": "Basic Memory (NAS)",
