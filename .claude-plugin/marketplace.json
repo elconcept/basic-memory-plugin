@@ -1,0 +1,21 @@
+{
+  "name": "elconcept-basic-memory",
+  "owner": {
+    "name": "elconcept"
+  },
+  "metadata": {
+    "description": "Basic Memory on NAS — staged preview, review required"
+  },
+  "plugins": [
+    {
+      "name": "basic-memory-nas",
+      "source": "./claude",
+      "description": "Self-hosted Basic Memory via OAuth MCP; candidate pending platform verification",
+      "keywords": [
+        "memory",
+        "mcp",
+        "self-hosted"
+      ]
+    }
+  ]
+}
