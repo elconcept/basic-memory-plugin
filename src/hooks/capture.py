@@ -14,7 +14,7 @@ DECISION = re.compile(
     r"decyzj|zdecydow|ustal|postanow|wybier|przyjmuj|rekomend|"
     r"\bdecision\b|\bdecided\b|\bwe will\b|\bchose\b|\bagreed\b|\bD\d+\b", re.I
 )
-SAFE_ARGS = ("file_path", "path", "title", "project", "command")
+SAFE_ARGS = ("file_path", "path", "title", "project")
 
 
 @dataclass(frozen=True)
@@ -146,19 +146,26 @@ def materialize(t: Transcript, meta: dict, max_bytes: int = 49_152, max_parts: i
     if max_bytes < 512 or not 1 <= max_parts <= 16:
         raise ValueError("Invalid material budget")
     decisions = []
+    truncated = {"decision": 0, "user": 0, "assistant": 0}
     for role, text in t.turns:
         for para in re.split(r"\n\s*\n", text):
             if DECISION.search(para):
-                decisions.append("- [" + role + "] " + para[:1500] + "\n")
+                if len(para) > 1500:
+                    truncated["decision"] += 1
+                decisions.append("- [" + role + "] " + para[:1500] + (" [TRUNCATED]" if len(para) > 1500 else "") + "\n")
     entries = [(kind, item) for kind, item in (
         ("decision", item) for item in dict.fromkeys(decisions))]
     for role, text in t.turns:
         limit = 2000 if role == "user" else 2500
+        if len(text) > limit:
+            truncated[role] += 1
         entries.append((role, "### " + role + "\n" + text[:limit] +
                         (" [TRUNCATED]" if len(text) > limit else "") + "\n"))
     for call in list(dict.fromkeys(t.calls))[:150]:
         entries.append(("tool", "- " + call + "\n"))
     omitted = dict.fromkeys(("decision", "user", "assistant", "tool"), 0)
+    for kind, n in truncated.items():
+        omitted[kind] += n
     omitted["tool"] += max(0, len(dict.fromkeys(t.calls)) - 150)
     head = "# Basic Memory checkpoint material\n" + "".join(
         f"{k}: {v}\n" for k, v in meta.items()
