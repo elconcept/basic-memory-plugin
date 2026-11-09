@@ -3,6 +3,9 @@ import json
 import hashlib
 import tempfile
 import unittest
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 from scripts.build import build, select_skills
@@ -40,7 +43,20 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(r["targets"], ["claude"])
         self.assertTrue((self.out / "claude/.mcp.json").exists())
         self.assertFalse((self.out / "openai").exists())
-        self.assertFalse((self.out / "claude/hooks").exists())
+        hook = self.out / "claude/hooks/bm_hook.py"
+        self.assertTrue(hook.is_file())
+        manifest = json.loads((self.out / "claude/hooks/hooks.json").read_text())
+        self.assertEqual(
+            set(manifest["hooks"]),
+            {"SessionStart", "PreCompact", "PostToolUse", "PostToolUseFailure", "SessionEnd", "Stop"},
+        )
+        self.assertIn("CLAUDE_PLUGIN_ROOT", manifest["hooks"]["PreCompact"][0]["hooks"][0]["command"])
+        self.assertFalse((self.out / "openai/hooks").exists())
+        env = dict(os.environ, CLAUDE_PLUGIN_DATA=str(self.out / "test-plugin-data"))
+        process = subprocess.run([sys.executable, str(hook), "status"],
+                                 capture_output=True, text=True, env=env, timeout=10)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(json.loads(process.stdout)["counts"], {})
         self.assertEqual(build(self.source, self.out, self.overrides, self.config, "claude", True, None)["content_sha256"], r["content_sha256"])
 
     def test_check_detects_drift(self):
