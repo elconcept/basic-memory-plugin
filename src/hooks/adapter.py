@@ -28,7 +28,7 @@ ALLOWED_SETTINGS = frozenset({
     "materialMaxBytes", "materialMaxParts",
 })
 DEFAULTS = {
-    "primaryProject": None, "allowedProjects": [], "captureFolder": "sessions",
+    "primaryProject": "main", "allowedProjects": [], "captureFolder": "sessions",
     "orientOnStart": True, "checkpointOnCompact": True, "checkpointOnSessionEnd": True,
     "sessionEndMinTurns": 3, "materialMaxBytes": 49152, "materialMaxParts": 4,
 }
