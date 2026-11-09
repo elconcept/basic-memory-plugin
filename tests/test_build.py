@@ -41,7 +41,7 @@ class BuildTests(unittest.TestCase):
                     "plugins/codex/schemas/decision.md"]:
             p = self.source / rel
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text("---\ntitle: x\n---\nSee /basic-memory:bm-setup.\n")
+            p.write_text("---\ntitle: x\n---\nSee /basic-memory:bm-setup and the `basic-memory:bm-decide` skill.\n")
 
     def skills(self, pkg):
         return sorted(p.name for p in (self.out / pkg / "skills").iterdir())
@@ -53,6 +53,9 @@ class BuildTests(unittest.TestCase):
         self.assertTrue((self.out / "claude/schemas/decision.md").is_file())
         self.assertTrue((self.out / "claude/output-styles/basic-memory.md").is_file())
         self.assertIn("/basic-memory-nas:bm-setup", (self.out / "claude/schemas/decision.md").read_text())
+        style = (self.out / "claude/output-styles/basic-memory.md").read_text()
+        self.assertIn("`basic-memory-nas:bm-decide`", style)
+        self.assertNotIn("`basic-memory:bm-", style)
         self.assertTrue((self.out / "claude/.mcp.json").exists())
         self.assertFalse((self.out / "claude/src").exists())
         self.assertFalse((self.out / "openai").exists())

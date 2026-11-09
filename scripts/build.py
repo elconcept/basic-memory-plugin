@@ -55,6 +55,13 @@ def frontmatter(text: str, name: str) -> None:
         raise ValueError(f"Missing description: {name}")
 
 
+def normalize_namespace(text: str) -> str:
+    """Point upstream plugin skill references at this plugin's namespace."""
+    text = text.replace("/basic-memory:", "/basic-memory-nas:")
+    text = text.replace("basic-memory:bm-", "basic-memory-nas:bm-")
+    return text.replace("codex:bm-", "basic-memory-nas:bm-")
+
+
 def skill_dirs(root: Path, prefix: str) -> list[Path]:
     if not root.is_dir():
         raise ValueError(f"Missing upstream root: {root}")
@@ -101,9 +108,7 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
                     if not old or text.count(old) != 1:
                         raise ValueError(f"Upstream patch anchor changed: {name} / {old[:60]!r}")
                     text = text.replace(old, new, 1)
-            text = text.replace("/basic-memory:", "/basic-memory-nas:")
-            text = text.replace("basic-memory:bm-", "basic-memory-nas:bm-")
-            text = text.replace("codex:bm-", "basic-memory-nas:bm-")
+            text = normalize_namespace(text)
             data = text.encode("utf-8")
         files[rel] = data
     if "SKILL.md" not in files:
@@ -174,7 +179,7 @@ def native_assets(upstream: Path, target: str) -> dict[str, bytes]:
                 continue
             data = f.read_bytes()
             if f.suffix == ".md":
-                text = data.decode("utf-8").replace("/basic-memory:", "/basic-memory-nas:")
+                text = normalize_namespace(data.decode("utf-8"))
                 for forbidden in DENY:
                     if forbidden in text:
                         raise ValueError(f"Blocked local-install/cloud instruction in {d}/{f.name}: {forbidden}")
