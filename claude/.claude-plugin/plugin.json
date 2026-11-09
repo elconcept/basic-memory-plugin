@@ -1,0 +1,9 @@
+{
+  "author": {
+    "name": "elconcept"
+  },
+  "description": "Self-hosted Basic Memory knowledge graph on a remote NAS",
+  "name": "basic-memory-nas",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "1.0.0"
+}
