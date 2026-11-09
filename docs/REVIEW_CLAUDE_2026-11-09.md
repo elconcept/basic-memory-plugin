@@ -4,6 +4,7 @@
 > 1. **Licencja: AGPL-3.0-or-later.** MIT nie było z użytkownikiem uzgodnione. K2 i N10 w wersji „bez kodu AGPL” są nieaktualne: kod upstreamu wolno wykorzystywać z atrybucją.
 > 2. **Projekty `legal` i `model-memory` nie dotyczą tego wdrożenia.** To projekty dawnej, nieudanej instalacji. Wdrożenie jest vanilla, NAS ma jeden projekt `main` i to jest stan prawidłowy. K3 wycofane. Sformułowanie „według użytkownika istnieją” było błędne: pochodziło z planu v1.1, a nie od użytkownika. R02 w zakresie `legal` × `main` jest bezprzedmiotowe; `assign`/`allowedProjects` usunięte z planu.
 > 3. **Upstream: bezpośredni commit na `main`.** Blokady PR (draft, `needs-review`, zakaz auto-merge, wymagany `validate`, ochrona gałęzi wymuszana także dla admina) nie były uzgodnione z użytkownikiem. Ochrona `main` zdjęta, PR #3 zamknięty, worker commituje na `main` po zielonych testach. K1 wycofane.
+> 4. **Bez zaplanowanej konserwacji (1.3.1).** Moja zgoda na harmonogramy `cloudcli-cron` w holyclaude (pkt 2 w sekcji 3, K5) jest nieaktualna. Użytkownik ani tego nie zaproponował, ani nie zaakceptował. Plugin podpinany od razu do claude.ai i chatgpt.com, bez sondy.
 
 **Data:** 2026-11-09
 **Dotyczy:** [`REVIEW_GPT_2026-11-09.md`](REVIEW_GPT_2026-11-09.md) (R01–R13), `PLAN_v1.2_DRAFT.md` (sekcja G, pytania 1–8), stan gałęzi `impl/v1` (`a32b278`, po rebase także `dcfc611`) i `main` (`ef59139`), PR #3 i #4.

@@ -16,18 +16,18 @@
 | `memory-ci-capture` | Wewnętrzne skille CI | **Wykluczyć**: `metadata.internal` | Wykluczony |
 | `memory-comark` | Wizualne dyrektywy Comark | Zachować tekst na self-hosted, renderer Cloud-only | Skopiowany |
 | `memory-continue` | Wznowienie pracy z wiedzy | Aktywować na żądanie i wznowienie sesji | Skopiowany |
-| `memory-curate` | Graf, relacje, duplikaty | **Holyclaude scheduled prompt** 1×/tydzień, raport przed zmianami | Skopiowany |
-| `memory-defrag` | Refaktoryzacja nadmiernych/zdublowanych notatek | **Holyclaude scheduled prompt** raz w miesiącu, tylko propozycje (PLAN v1.2 F11) | Skopiowany |
+| `memory-curate` | Graf, relacje, duplikaty | Na żądanie użytkownika | Skopiowany |
+| `memory-defrag` | Refaktoryzacja nadmiernych/zdublowanych notatek | Na żądanie użytkownika | Skopiowany |
 | `memory-doctor` | Diagnostyka indeksów i zapisów | NAS read-only, naprawa po akceptacji | Nadpisany |
 | `memory-ingest` | Strukturyzacja wejścia | Opcjonalne importy, provenance, bez zmian oryginału | Skopiowany |
-| `memory-lifecycle` | Statusy, foldery, archiwum | **Holyclaude scheduled prompt** tygodniowy, bez automatycznych delete | Skopiowany |
+| `memory-lifecycle` | Statusy, foldery, archiwum | Na żądanie użytkownika | Skopiowany |
 | `memory-literary-analysis` | Analiza pełnej książki | **Wykluczyć**: wymaga lokalnego CLI / poza zakresem | Wykluczony |
 | `memory-metadata-search` | Filtrowanie frontmatter | Zautomatyzować filtrowanie typu/statusu/projektu | Skopiowany |
 | `memory-notes` | Struktura obserwacji i relacji | Kanoniczny format i provenance | Skopiowany |
 | `memory-okf` | Kontrola zgodności i eksport OKF | Czytać przez MCP; CLI tylko na NAS | Skopiowany / patch |
 | `memory-onboarding` | Schematy, router, indeksy, startup | Uruchamiać jawnie podczas konfiguracji nowego projektu | Skopiowany |
 | `memory-quest` | Misje Basic Memory Cloud | **Wykluczyć**: Cloud-only | Wykluczony |
-| `memory-reflect` | Okresowa refleksja nad trwałymi ustaleniami | **Holyclaude scheduled prompt** dzienny | Skopiowany |
+| `memory-reflect` | Okresowa refleksja nad trwałymi ustaleniami | Na żądanie użytkownika | Skopiowany |
 | `memory-research` | Zewnętrzny research + notatki | Zachować z wymogiem prywatności zapytań | Skopiowany |
 | `memory-schema` | `infer`, `validate`, `diff` | Seed + kontrola driftu | Skopiowany |
 | `memory-tasks` | Aktywne zadania, status, kontynuacja | Typowane zadania, przypisywanie projektów | Skopiowany |
@@ -69,7 +69,6 @@
 |---|---|---|
 | Orientacja nie wykorzystuje dość precyzyjnego metadata search | Zbyt słaby recall lub niepotrzebne wyniki | `bm-orient` + type/status + aktualny projekt |
 | Zależność od PreCompact | Znikające decyzje po sesji bez kompakcji | `bm-decide`, `bm-remember`, `memory-capture` w trakcie pracy |
-| Brak procedur refleksji/higieny | Narastanie duplikatów i nieaktualnych zadań | Cztery scheduled prompts na holyclaude |
 | Jeden wspólny `bm-*` katalog dla klientów | Utrata funkcji natywnych Codex | Dwa oddzielne zestawy upstream |
 | Brak testów importu/chronologii/wersjonowania | Wykorzystanie tylko prostych notatek | Feature-gated testy NAS i ograniczone importy |
 | Skromny test F10 | Nie wykrywa braków bez kompakcji | 6/6 także bez kompakcji i przy dwóch kompakcjach |
@@ -82,7 +81,6 @@ Oznaczenia stosowane w dalszej pracy:
 - **SOURCE-VERIFIED** = istnieje w upstream@SHA.
 - **NAS-VERIFIED** = potwierdzone w działającym MCP/CLI na Synology.
 - **CLIENT-VERIFIED** = wywołanie MCP/skilla na docelowym Claude/ChatGPT/Codex.
-- **SCHEDULED-VERIFIED** = prompt holyclaude ma zapisany termin oraz co najmniej jeden udany log wykonania.
 - **GH-ACTIVE** = workflow na `main` + uruchomienie i wynik + prawa do tworzenia PR.
 
 Obecnie ta macierz stwierdza tylko SOURCE-VERIFIED. Pozostałe statusy mają oddzielne bramki w [PLAN.md v1.2](PLAN.md).

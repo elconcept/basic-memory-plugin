@@ -37,10 +37,6 @@
 ## Holyclaude — stan rzeczywisty
 
 - Kontener `/Holyclaude` działa.
-- `cloudcli-cron` **v0.2.0** jest zainstalowany w CloudCLI; istnieje katalog stanu schedulera; liczba ledgerów `*.json`: **0**.
-- Lokalny scheduled prompt możliwy po aktywacji w UI i konfiguracji procesu `claude`; odrębny od chmurowego Claude `/schedule`.
-- Cztery gotowe, ograniczone do projektu `main` prompty w [HOLYCLAUDE_SCHEDULED_PROMPTS.md](HOLYCLAUDE_SCHEDULED_PROMPTS.md). **Nie ustawiono jeszcze aktywnych terminów.** Najpierw instalacja właściwego `basic-memory-nas` na kliencie, test `Run Now`, autoryzacja i rzeczywisty MCP readback.
-- Plugin `cloudcli-cron` v0.2.0 nie wspiera `biweekly`; defrag zaproponowany tygodniowo lub miesięcznie w trybie proposal-only.
 
 ## NAS Basic Memory — stan rzeczywisty
 
@@ -68,11 +64,10 @@
 2. **G0 Platform**: Claude/ChatGPT/Codex OAuth i plugin-distribution; osobny dowód dla narzędzi write/readback i dziedziczenia autoryzacji.
 3. **T04 artefakty**: generator `claude/` oraz `openai/`, budowanie profilami, licencja i skille natywne klienta; obecny sync jest tylko snapshotem.
 4. **T05 checkpoint state machine** oraz sesja bez kompakcji; testy negatywne przed migracją.
-5. **T06 skille/setup** i dopiero później **T08** scheduled prompts w HolyClaude.
+5. **T06 skille/setup**.
 6. **T09** identyczność CLI/MCP, `bm_man`, schema, doktor i import; żadnych napraw bez wcześniejszej zgody.
 7. **T10** end-to-end 6/6 z dwóch niezależnych sesji; dopiero wtedy propozycja merge do main.
 
-Nie wolno opisywać `cloudcli-cron` jako aktywnego harmonogramu utrzymania pamięci ani snapshot PR #3 jako zaktualizowanego pluginu: oba mają jeszcze niezrealizowane bramki.
 
 ## Kontynuacja wykonawcza — 2026-11-09, po recenzji Claude
 
@@ -100,7 +95,11 @@ Ten fragment koryguje historyczny stan powyżej; poprzednich wyników i błędó
 - T04: wygenerowano **kandydatów**, nie potwierdzono poprawnego OAuth i instalacji. Wariant OpenAI M jest testowy. Nie ma jeszcze aktywnego adaptera hooków.
 - F1a: testy modułu `src/hooks/state_store.py` nie dowodzą integracji `PreCompact`, `SessionEnd`, `PostToolUse` ani testu ciągłości 6/6. **F1 pozostaje nieukończone.**
 - `main` nadal synchronizuje źródła upstream do draft PR. Rozbudowany worker budowania i F9 znajdują się tylko na `impl/v1`, oczekują na weryfikację i merge zgodnie z bramkami.
-- `cloudcli-cron` w HolyClaude jest zainstalowany, ale cztery harmonogramy nie są jeszcze włączone. Przed ich aktywacją wymagane są F5, rzeczywisty dostęp MCP i wymuszona konfiguracją polityka read-only.
 - Obowiązuje zweryfikowany przez Claude [PLAN.md v1.2](PLAN.md), a nie usunięty draft. F0/G0, F1/F2, G4 i F11 pozostają osobnymi bramkami.
 
 **Następne zadania:** F1b (samodzielny adapter eventów i bezpieczne przechwycenie transkryptów z fixture'ami), F2 (weryfikacja skilli `bm-checkpoint` i `bm-orient`, NOTICE/licencje), aktualizacja CI i odczytowy audyt brakujących projektów przed dalszym G4. Zero domyślnego przypisywania `null` do `main` lub `legal`.
+
+## Korekta właściciela 1.3.1 (2026-11-09)
+
+- **Bez zaplanowanej konserwacji.** Harmonogramy `cloudcli-cron`, cztery prompty konserwacyjne (`f33d11ea`, `d40ee1ba`) i bramka G7/F11 wycofane; `HOLYCLAUDE_SCHEDULED_PROMPTS.md` usunięty. To nie był pomysł ani decyzja użytkownika. Na holyclaude niczego nie aktywować.
+- **Wdrożenie od razu.** Bez sondy `bm-probe`: plugin `basic-memory-nas` z `main` jest podpinany bezpośrednio do claude.ai i chatgpt.com (PLAN, decyzja właściciela 6).

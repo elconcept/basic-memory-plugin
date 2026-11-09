@@ -1,6 +1,6 @@
 # Plan wdrożenia: plugin `basic-memory-nas` (Claude + OpenAI)
 
-Wersja planu: 1.3, 2026-11-09 — decyzje właściciela mają pierwszeństwo przed wcześniejszymi założeniami
+Wersja planu: 1.3.1, 2026-11-09 — decyzje właściciela mają pierwszeństwo przed wcześniejszymi założeniami
 Status: DO REALIZACJI W GRANICACH BRAMEK. Kierunek zatwierdzony przez recenzenta GPT. Uwagi R01–R13 ([recenzja GPT](REVIEW_GPT_2026-11-09.md)) i draft v1.2 GPT wprowadzone; odpowiedź z uzasadnieniem w [REVIEW_CLAUDE_2026-11-09.md](REVIEW_CLAUDE_2026-11-09.md). Ostatnie zatwierdzenie należy do użytkownika.
 Repozytorium: `github.com/elconcept/basic-memory-plugin` (publiczne), gałąź robocza `impl/v1`
 Upstream: `github.com/basicmachines-co/basic-memory`, gałąź `main`. Pin w `config/upstream.lock.json` (stan odniesienia: `b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5`, 2026-11-08)
@@ -12,6 +12,8 @@ Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0.0 na Synology DS1821
 2. **Vanilla:** dotyczy nowego, standardowego Basic Memory na NAS. Projekt domyślny `main` jest prawidłowy; jakiekolwiek projekty z poprzednich instalacji są poza zakresem.
 3. **Auto-update:** worker ma automatycznie integrować nowe commity upstreamu po zaliczeniu testów, bez ręcznego zatwierdzania każdej rutynowej aktualizacji. Niepowodzenie testów musi blokować daną aktualizację i być zgłoszone. Obecne ograniczenia branch protection są do naprawienia, nie są życzeniem użytkownika.
 4. **Brak zmian w danych NAS:** żadnych importów, tworzenia historycznych projektów ani modyfikacji bazy w ramach tej korekty.
+5. **Bez zaplanowanej konserwacji:** żadnych harmonogramów, `cloudcli-cron`, okresowych zadań `memory-reflect/curate/defrag/lifecycle` w holyclaude ani innych „okresów porządkowania”. Nie był to pomysł użytkownika i nie został zaakceptowany. Skille upstreamu są w pluginie i działają wyłącznie na żądanie użytkownika.
+6. **Wdrożenie od razu:** plugin jest podpinany do claude.ai i chatgpt.com teraz, bez fazy sondy (`bm-probe`). Bramki G1/G2 weryfikują rzeczywisty plugin na żywo; hooki i test ciągłości (F1, F10) dochodzą kolejnymi wersjami pluginu.
 
 Niniejsze decyzje mają pierwszeństwo przed starszymi sformułowaniami planu i dokumentami recenzji.
 
@@ -31,7 +33,6 @@ Niniejsze decyzje mają pierwszeństwo przed starszymi sformułowaniami planu i 
 | V10 | G0-O z ośmioma osobnymi wynikami; §10 z testami OAuth od zewnątrz i kontrolą obejścia Cloudflare. | R11, R12 |
 | V11 | Aktualizacje upstreamu wdrażane automatycznie po pomyślnych testach (PR może być etapem technicznym). Błędy raportowane bez cichego sukcesu. | korekta właściciela |
 | V12 | Licencja repozytorium: AGPL-3.0; zachować notices i odrębne licencje elementów upstreamu. | korekta właściciela |
-| V13 | Konserwacja wiedzy: cztery skille przez `cloudcli-cron` w holyclaude (bramka G7, faza F11), tylko do odczytu wymuszone konfiguracją. | draft A4/C, K5 |
 | V14 | F10 rozszerzony: wariant z kompakcją (A), bez kompakcji (B), dwie kompakcje (C); raport etapowy. | R07, R13 |
 | V15 | Jedna numeracja: fazy F, bramki G. Zadania T00–T10 z draftu zmapowane w §11.0. | K4 |
 | V16 | Korekta 1.2.1: usunięte wszystkie założenia o projektach historyczne projekty. To wewnętrzne projekty wcześniejszej, nieudanej instalacji, bez związku z tym wdrożeniem vanilla. NAS ma jeden projekt `main` i to jest stan prawidłowy. | użytkownik |
@@ -42,12 +43,12 @@ Niniejsze decyzje mają pierwszeństwo przed starszymi sformułowaniami planu i 
 
 1. Wykonuj fazy w kolejności z §11. Kolejność F1 i F2 może się przeplatać; reszty nie przeskakuj.
 2. Każda faza kończy się **kryterium akceptacji**. Bez spełnienia kryterium nie przechodzisz dalej.
-3. Bramki weryfikacyjne (G0–G7) mają zdefiniowane wyniki. Wynik spoza opisanych wariantów oznacza **STOP i zgłoszenie** stanu faktycznego użytkownikowi. Niczego nie improwizuj.
+3. Bramki weryfikacyjne (G0–G6) mają zdefiniowane wyniki. Wynik spoza opisanych wariantów oznacza **STOP i zgłoszenie** stanu faktycznego użytkownikowi. Niczego nie improwizuj.
 4. Zakazy bezwzględne są w sekcji 12.
 5. Pracuj na gałęzi `impl/v1`. Jeden commit na zakończone zadanie, message `<faza>: <co>`. Merge do `main`:
    - w punktach **[MERGE]**, po zielonym CI;
 6. Wynik każdej bramki zapisuj w `docs/VERIFICATION.md`: data, bramka, wynik, dowód. Postęp zadań w `docs/IMPLEMENTATION_LOG.md`. W dowodach nigdy nie umieszczaj wartości zmiennych środowiskowych, tokenów, nagłówków autoryzacji ani ścieżek hosta NAS.
-7. Rozróżniaj stany dowodu: **SOURCE-VERIFIED** (jest w upstream@pin), **NAS-VERIFIED**, **CLIENT-VERIFIED** (na danej powierzchni), **SCHEDULED-VERIFIED** (zaplanowany przebieg z logiem), **GH-ACTIVE** (workflow na `main` z udanym przebiegiem). „Skonfigurowane” ≠ „działa”.
+7. Rozróżniaj stany dowodu: **SOURCE-VERIFIED** (jest w upstream@pin), **NAS-VERIFIED**, **CLIENT-VERIFIED** (na danej powierzchni), **GH-ACTIVE** (workflow na `main` z udanym przebiegiem). „Skonfigurowane” ≠ „działa”.
 
 ---
 
@@ -56,9 +57,8 @@ Niniejsze decyzje mają pierwszeństwo przed starszymi sformułowaniami planu i 
 **Cel:** jeden plugin, utrzymywany w jednym repozytorium, dostarcza skille Basic Memory, połączenie MCP do `bm.xlap.pl/mcp` i hooki ciągłości pamięci. Pamięć działa w cyklu:
 - **recall:** orientacja na starcie (`bm-orient`, `memory-continue`);
 - **capture:** utrwalanie decyzji w trakcie pracy (`bm-decide`, `bm-remember`, `memory-capture`) i checkpoint jako siatka bezpieczeństwa (kompakcja, koniec sesji, awaria);
-- **consolidate:** zaplanowana higiena wiedzy w holyclaude (`memory-reflect`, `memory-curate`, `memory-defrag`, `memory-lifecycle`).
 
-Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (dystrybucja skilli, routing projektu, hooki), holyclaude (zaplanowana konserwacja), GitHub Actions (synchronizacja upstreamu, CI).
+Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (dystrybucja skilli, routing projektu, hooki), GitHub Actions (synchronizacja upstreamu, CI).
 
 | Powierzchnia | Jak dostaje plugin | Gdzie autoryzacja MCP |
 |---|---|---|
@@ -85,7 +85,6 @@ Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (d
 - **N8.** Świeża instancja vanilla ma domyślny projekt `main`, który jest prawidłowy. Historyczne projekty innych instancji nie są wymagane ani weryfikowane. Dla jawnie skonfigurowanych dodatkowych projektów zachowaj separację.
 - **N9.** Niczego nie usuwasz z konfiguracji użytkownika bez uprzedniej kopii do `~/.bm-migration-backup/<YYYYmmdd-HHMMSS>/` z zachowaniem ścieżek względnych. Lista przeniesionych elementów trafia do VERIFICATION.md.
 - **N10.** Repozytorium i własny kod są na AGPL-3.0; wolno korzystać z upstreamowego kodu AGPL przy zachowaniu obowiązków licencyjnych, oryginalnych notices i informacji o modyfikacjach. Nie kopiować komponentów niepotrzebnych do pluginu.
-- **N11.** Zadania holyclaude używają wyłącznie projektu zweryfikowanego jako domyślny (`main`) i ograniczeń uprawnień wymuszanych konfiguracją.
 
 ---
 
@@ -115,7 +114,6 @@ Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (d
 | U20 | Licencje upstreamu: korzeń AGPL-3.0-or-later; `skills/README.md` oraz `plugin.json` obu pluginów deklarują dodatkowo MIT | kod @b7d4006 | pewne |
 | U21 | Kontener Basic Memory 1.0.0: CLI i MCP widzą wyłącznie projekt `main`. Jest to oczekiwany stan nowej instancji vanilla, nie awaria. | `NAS_PRECHECK.md`, `IMPLEMENTATION_LOG.md` | potwierdzone |
 | U22 | GH: automatyczny sync działa na `main`; CI na PR #3 ma zielony check `validate` (workflow_dispatch), lecz API zwraca `mergeable_state=blocked`. End-to-end automatyczne wdrożenie wymaga naprawy. | GitHub API, 2026-11-09 | potwierdzone |
-| U23 | Holyclaude: `cloudcli-cron` v0.2.0 zainstalowany, 0 ledgerów. Obsługuje daily/weekdays/weekly/monthly, Run Now, Pause/Resume, Retry; bez własnej składni cron i bez „co 2 tygodnie”. | `HOLYCLAUDE_SCHEDULED_PROMPTS.md` | pewne co do instalacji; działanie **G7** |
 
 ---
 
@@ -149,8 +147,7 @@ Podział odpowiedzialności: NAS (baza, graf, indeksy, schematy, MCP), plugin (d
   6. **Retencja:** materiał usuwany 7 dni po `saved`/`dismissed`. Wpisy niezakończone nie są usuwane; po 30 dniach oznaczane `stale` i zgłaszane do decyzji użytkownika.
 - **D6.** Wersjonowanie: wspólna wersja `1.0.N`, `N` rośnie przy zmianie zawartości generowanej. Pin upstreamu z `config/upstream.lock.json` trafia do `build-info.json`.
 - **D7.** Repozytorium publiczne, własny kod i całość pluginu na AGPL-3.0; zachować licencje komponentów upstreamu, informację o zmianach i atrybucję.
-- **D8.** Bieżące utrwalanie i konserwację realizują skille upstreamu, bez własnych odpowiedników. Jedyny własny kod wykonywalny w pluginie to `bm_hook.py`, bo upstreamowe hooki wymagają lokalnego Basic Memory (U3, N5).
-- **D9.** Konserwacja wiedzy: `cloudcli-cron` w holyclaude (lokalny proces `claude`). Nie DSM, nie `/schedule`, nie `/loop`.
+- **D8.** Bieżące utrwalanie realizują skille upstreamu, bez własnych odpowiedników. Jedyny własny kod wykonywalny w pluginie to `bm_hook.py`, bo upstreamowe hooki wymagają lokalnego Basic Memory (U3, N5).
 
 Odrzucone, nie wracać do nich: shim `/proxy`, SSH/`docker exec` z hooka, token serwisowy w hookach, `mcp_tool` na starcie sesji, automatyczny fallback na konektor konta, `saved` z deklaracji modelu, harmonogram DSM, lokalny Basic Memory na MacBooku.
 
@@ -158,21 +155,19 @@ Odrzucone, nie wracać do nich: shim `/proxy`, SSH/`docker exec` z hooka, token 
 
 ## 4. Bramki weryfikacyjne
 
-### G0. Sonda platform (F0, przed budową właściwego pluginu)
+### G0. Platformy (na żywo, z docelowym pluginem; decyzja właściciela 6)
 
-Cel: ustalić obsługiwane ścieżki **przed** inwestycją w build. Sonda to minimalne pluginy w gałęzi `probe`:
-- `probe/claude/`: `plugin.json` (nazwa `bm-probe`), `.mcp.json` jak w 7.1, jeden skill `probe-ping` („call bm_project and report the list”);
-- `probe/openai/`: `plugin.json` (format przenośny), jeden skill `probe-ping` i wariant MCP do testu.
+Bez sondy: testowany jest od razu docelowy plugin `basic-memory-nas` z gałęzi `main` (marketplace w korzeniu repo).
 
 **Claude (G0-C):**
-1. W claude.ai dodaj marketplace z gałęzi `probe`. Jeśli UI nie pozwala wskazać gałęzi, użyj tymczasowego repo `elconcept/bm-probe` i usuń je po F0.
-2. Zainstaluj `bm-probe`, połącz MCP.
+1. W claude.ai dodaj marketplace `elconcept/basic-memory-plugin`.
+2. Zainstaluj `basic-memory-nas`, połącz MCP (OAuth Cloudflare).
 3. Wykonaj G1.
 
 **OpenAI (G0-O):**
 1. Ustal typ konta ChatGPT (Plus/Pro/Business/Enterprise) i rolę (admin workspace'u czy nie).
 2. Zarejestruj połączenie: chatgpt.com/plugins → „+” → „Add custom MCP server”, `https://bm.xlap.pl/mcp`, OAuth, „Create as a plugin”. Autoryzuj. Zapisz ID `plugin_asdk_app…`.
-3. Sprawdź ścieżki dystrybucji `probe/openai`, w kolejności: (a) sync z GitHuba workspace'u (tylko admin); (b) marketplace lokalny w ChatGPT Desktop; (c) Plugin Creator.
+3. Sprawdź ścieżki dystrybucji `openai/`, w kolejności: (a) sync z GitHuba workspace'u (tylko admin); (b) marketplace lokalny w ChatGPT Desktop; (c) Plugin Creator.
 4. Zapisz **osobno** każdy wynik, z dowodem (zrzut lub log, bez sekretów):
 
 | Kod | Test | Wynik |
@@ -180,7 +175,7 @@ Cel: ustalić obsługiwane ścieżki **przed** inwestycją w build. Sonda to min
 | O1 | `bm_project` w czacie ChatGPT | OK / brak / błąd |
 | O2 | `bm_write` (`plugin-smoke-<data>`, projekt `main`, folder `tests`) | OK / tylko odczyt / błąd |
 | O3 | `bm_read` tej notatki | OK / błąd |
-| O4 | skill `probe-ping` widoczny w web | tak / nie |
+| O4 | skille `basic-memory-nas` widoczne w web | tak / nie |
 | O5 | skill i narzędzia widoczne w Codex | tak / nie |
 | O6 | O1–O5 po restarcie klienta | tak / nie |
 | O7 | dokładnie jeden zestaw narzędzi Basic Memory (rejestracja + plugin z repo) | tak / duplikat do wyłączenia / duplikat nieusuwalny |
@@ -198,7 +193,7 @@ Niedostępność funkcji w planie konta zapisz jako **ograniczenie platformy**, 
 **Test:**
 1. W czacie claude.ai: konektor pluginu widoczny, OAuth przechodzi, `bm_project` działa.
 2. W Claude Code na MacBooku (logowanie kontem) po restarcie, w `/plugin` i `/mcp`: serwer pluginu *connected*, bez osobnego logowania.
-3. Zapisz w VERIFICATION.md **dokładne nazwy narzędzi** (pełna lista `tools/list`, np. `mcp__plugin_bm-probe_basic-memory__bm_write`).
+3. Zapisz w VERIFICATION.md **dokładne nazwy narzędzi** (pełna lista `tools/list`, np. `mcp__plugin_basic-memory-nas_basic-memory__bm_write`).
 4. Zapisz jako fixture (`tests/fixtures/mcp/`, treść fikcyjna, struktura prawdziwa): wejście hooka `PostToolUse` dla `bm_write`, `bm_edit`, `bm_read` (sukces), `PostToolUseFailure` (błąd) oraz `SessionEnd`. Na tej podstawie ustalasz w 7.4 pola: identyfikator notatki w odpowiedzi zapisu, pole identyfikatora w wejściu odczytu, pole projektu.
 
 **Wyniki:**
@@ -253,21 +248,6 @@ Wszystko tylko do odczytu. **Żadne wywołanie nie zwraca do modelu wartości zm
 
 Tabela: powierzchnia → czy się zaktualizowało → po jakim działaniu → **czy hooki nowej wersji się wykonują** → czy wymagane było ponowne zatwierdzenie zaufania (Codex). Dla Cowork uwzględnij anthropics/claude-code#65426 i zapisz procedurę obejścia. Sama widoczność nowej wersji nie zalicza bramki.
 
-### G7. Holyclaude: zaplanowany proces z MCP (F11)
-
-1. Plugin `cloudcli-cron` aktywny w CloudCLI UI (Settings → Plugins); sama obecność katalogu nie wystarcza. Strefa czasowa zweryfikowana.
-2. Osobny workspace testowy z `.claude/settings.json`:
-   - `basicMemory.primaryProject` jawnie;
-   - `permissions.deny` dla narzędzi `bm_write`, `bm_edit`, `bm_move`, `bm_delete`, `bm_project_delete` (pełne nazwy z `claude_tool_prefix`) w fazie tylko do odczytu.
-3. Prompt testowy tylko do odczytu, **Run Now**: nowy proces `claude` widzi `basic-memory-nas`, MCP *connected* bez interaktywnego logowania, `bm_project` i `bm_search` zwracają dane. Nie zakładaj, że nowy proces dziedziczy autoryzację otwartej sesji.
-4. Test negatywny: prompt prosi o `bm_delete` notatki testowej → odmowa wynikająca z `permissions.deny`, notatka nienaruszona.
-5. Historia wykonania: status `succeeded` zgodny z faktycznym wynikiem MCP. Sam kod wyjścia 0 nie wystarcza.
-
-**Wyniki:**
-- **G7-A:** pkt 1–5 spełnione. → F11.
-- **G7-B:** nowy proces wymaga osobnego OAuth albo nie widzi pluginu → STOP, raport (bez obejść tokenem serwisowym, N1).
-- **G7-C:** `permissions.deny` nie działa w procesie uruchamianym przez scheduler → STOP. Konserwacja wyłącznie ręczna.
-
 ---
 
 ## 5. Struktura repozytorium
@@ -306,7 +286,7 @@ basic-memory-plugin/
 │   ├── test_sync_upstream.py
 │   └── fixtures/{transcripts,mcp}/     # syntetyczne, struktura z prawdziwych klientów
 ├── build-info.json
-├── docs/{PLAN.md,VERIFICATION.md,IMPLEMENTATION_LOG.md,FEATURE_MATRIX.md,NAS_PRECHECK.md,HOLYCLAUDE_SCHEDULED_PROMPTS.md,REVIEW_*.md}
+├── docs/{PLAN.md,VERIFICATION.md,IMPLEMENTATION_LOG.md,FEATURE_MATRIX.md,NAS_PRECHECK.md,REVIEW_*.md}
 ├── .gitleaks.toml
 ├── .github/workflows/{ci.yml,sync-upstream.yml}
 ├── LICENSE
@@ -723,11 +703,10 @@ Testy z zewnątrz (wynik w VERIFICATION.md, bez tokenów):
 | T05 | F1 | do zrobienia |
 | T06 | F3 | do zrobienia |
 | T07 | F4–F8 | do zrobienia |
-| T08 | F11 | przygotowane prompty; G7 do zrobienia |
 | T09 | G4 (F3) i F12 | preflight częściowy (CLI 1.0.0, projekt `main`) |
 | T10 | F10 | do zrobienia |
 
-### F0. Repo, audyt i sonda platform
+### F0. Repo, audyt i podpięcie platform
 1. Repo, `LICENSE` (AGPL-3.0-or-later), `README.md`, `docs/VERIFICATION.md`, gałąź `impl/v1`. Worker i CI według §9.
 2. **Audyt istniejących źródeł**, tylko odczyt, wynik w VERIFICATION.md (nazwy i ścieżki, nigdy wartości sekretów):
    - **MacBook, Claude Code:** `claude plugin list`; `/mcp`; nazwy w `~/.claude/skills`; wpisy `mcpServers` dotyczące Basic Memory w `~/.claude.json` i `~/.claude/settings.json`; `syncClaudeAiPlugins`.
@@ -776,7 +755,7 @@ Wykonaj G4. Napisz nadpisania (8.1–8.3) i patche (8.4–8.6) dla każdego celu
 **[MERGE]** `impl/v1` → `main`.
 
 ### F4. claude.ai
-1. Usuń sondę `bm-probe`. Dodaj marketplace `elconcept/basic-memory-plugin`, zainstaluj `basic-memory-nas`, połącz MCP.
+1. Dodaj marketplace `elconcept/basic-memory-plugin`, zainstaluj `basic-memory-nas`, połącz MCP.
 2. Czat webowy: `bm_project`; `bm_write` i `bm_read` notatki `plugin-smoke-<data>` (projekt `main`, folder `tests`), **identyfikator zapisany w VERIFICATION.md**; skille `basic-memory-nas:memory-notes` i `basic-memory-nas:bm-orient`.
 3. Duplikaty (N3, N4): brak wgranych skilli Basic Memory; jeden konektor Basic Memory.
 4. §10: testy z zewnątrz.
@@ -806,7 +785,7 @@ Test skilli i MCP jak w F4 pkt 2, potem G5.
 **Akceptacja:** skille i MCP działają; G5 zapisana.
 
 ### F7. ChatGPT i G2
-(Tylko przy G0-O-R lub G0-O-M.) Usuń sondę; zainstaluj `basic-memory-nas` ścieżką z G0-O; G2 (O1–O8).
+(Tylko przy G0-O-R lub G0-O-M.) Zainstaluj `basic-memory-nas` ścieżką z G0-O; G2 (O1–O8).
 
 **Akceptacja:** O1–O8 spełnione.
 
@@ -848,24 +827,7 @@ Na MacBooku w Claude Code, potem w Codex (jeśli F8 zaliczone). Projekt `main`, 
 
 **Akceptacja całego wdrożenia:** F10 A, B i C zaliczone na Claude Code. Na Codex zaliczone albo ograniczenie z G3 udokumentowane.
 
-### F11. Konserwacja wiedzy w holyclaude (po F5)
-
-1. G7.
-2. Cztery harmonogramy w `cloudcli-cron` (prompty w [HOLYCLAUDE_SCHEDULED_PROMPTS.md](HOLYCLAUDE_SCHEDULED_PROMPTS.md)), projekt `main`, workspace z `permissions.deny` z G7:
-
-| Skill | Częstotliwość | Tryb w fazie 1 |
-|---|---|---|
-| `memory-reflect` | codziennie 02:20 | raport bez zapisu |
-| `memory-curate` | co tydzień, pon. 02:45 | propozycje bez zapisu |
-| `memory-lifecycle` | co tydzień, śr. 02:50 | propozycje bez zapisu |
-| `memory-defrag` | co miesiąc, 1. dzień 03:10 | propozycje bez zapisu |
-
-3. Faza 1 (tylko odczyt) trwa co najmniej 2 tygodnie. Przegląd raportów przez użytkownika.
-4. Faza 2 (na osobną zgodę użytkownika): `memory-reflect` może zapisywać notatki w folderze `main/maintenance/` (zdjęcie `deny` tylko z `bm_write`). `bm_edit`, `bm_move`, `bm_delete` pozostają zablokowane; zmiany w istniejących notatkach wyłącznie ręcznie po akceptacji propozycji.
-
-**Akceptacja:** G7-A; cztery harmonogramy widoczne z kolejnymi terminami; `Run Now` z rzeczywistym odczytem MCP; pierwszy samodzielny przebieg każdego z nich z wynikiem w historii (SCHEDULED-VERIFIED).
-
-### F12. Funkcje serwera (opcjonalnie, po odbiorze)
+### F11. Funkcje serwera (opcjonalnie, po odbiorze)
 
 Benchmark wyszukiwania po polsku (20–50 zapytań na syntetycznym projekcie testowym: tekst/wektor/hybryda, trafność, czas), test importu małego dokumentu, `bm_schema` infer/validate/diff. Każda zmiana konfiguracji serwera wyłącznie po zgodzie użytkownika (§12 pkt 4).
 
@@ -873,7 +835,6 @@ Benchmark wyszukiwania po polsku (20–50 zapytań na syntetycznym projekcie tes
 - **claude.ai:** odinstaluj plugin i usuń marketplace. Przywrócenie ręcznego konektora wymaga decyzji użytkownika.
 - **ChatGPT:** odinstaluj plugin. Połączenie z rejestracji może pozostać.
 - **Hosty:** przywróć elementy z `~/.bm-migration-backup/<ts>/` według listy w VERIFICATION.md.
-- **Holyclaude:** wstrzymaj (Pause) harmonogramy.
 - **Repo:** `git revert` merge'a; plugin dostaje wersję `N+1` z poprzednią zawartością.
 
 ---
@@ -903,12 +864,8 @@ Benchmark wyszukiwania po polsku (20–50 zapytań na syntetycznym projekcie tes
 | `memory-literary-analysis` | Wykluczony. 24 skille na cel. | v1.1 |
 | Sync upstreamu | Codzienny monitoring i automatyczna aktualizacja po zielonych testach. PR nie może wymagać rutynowego ręcznego zatwierdzania. | decyzja właściciela |
 | `saved` w Codex bez `PostToolUse` | Najwyżej `reported_by_model`; `saved` tylko po `confirm` użytkownika | R01 |
-| Scheduler konserwacji | `cloudcli-cron` w holyclaude; nie DSM, `/schedule`, `/loop` | draft, użytkownik |
-| Częstotliwość `memory-defrag` | Raz w miesiącu, tylko propozycje | Claude (cotygodniowo to szum) |
 | Licencja | Całe repo i własny kod: AGPL-3.0; zachowaj notices upstreamu. | decyzja właściciela |
 
-**Pytania otwarte do użytkownika:**
-1. F11 pkt 4: czy w ogóle dopuszczasz zapis przez zaplanowane procesy, czy konserwacja ma pozostać trwale w trybie raportów?
 
 ---
 
@@ -919,5 +876,4 @@ Benchmark wyszukiwania po polsku (20–50 zapytań na syntetycznym projekcie tes
 - Claude: support.claude.com/en/articles/13837440, support.claude.com/en/articles/11175166, code.claude.com/docs/en/plugins-reference, code.claude.com/docs/en/hooks
 - OpenAI: developers.openai.com/plugins/build/plugins, developers.openai.com/plugins/deploy/submission, developers.openai.com/codex/mcp, learn.chatgpt.com/docs/plugins, help.openai.com/en/articles/12584461
 - github.com/anthropics/claude-code/issues/65426
-- github.com/grostim/cloudcli-cron
-- To repo: `docs/REVIEW_GPT_2026-11-09.md`, `docs/REVIEW_CLAUDE_2026-11-09.md`, `docs/FEATURE_MATRIX.md`, `docs/NAS_PRECHECK.md`, `docs/HOLYCLAUDE_SCHEDULED_PROMPTS.md`, `docs/IMPLEMENTATION_LOG.md`
+- To repo: `docs/REVIEW_GPT_2026-11-09.md`, `docs/REVIEW_CLAUDE_2026-11-09.md`, `docs/FEATURE_MATRIX.md`, `docs/NAS_PRECHECK.md`, `docs/IMPLEMENTATION_LOG.md`
