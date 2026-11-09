@@ -66,6 +66,29 @@ jobs:
           python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M
           python scripts/build.py --upstream vendor/upstream --out . --target claude --check
           python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
+      - name: Validate the exact generated release before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A green pre-build test alone does not validate regenerated assets.
+          python -m unittest discover -s tests -p 'test_*.py' -v
+          python -m compileall -q scripts src claude/src
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.sync_upstream import collect, digest
+          lock = json.loads(Path("config/upstream.lock.json").read_text())
+          cfg = json.loads(Path("config/build.json").read_text())
+          files = collect(Path("vendor/upstream"))
+          assert lock["upstream_sha"] == cfg["upstream_sha"], "snapshot/build SHA mismatch"
+          assert lock["snapshot_digest"] == digest(files), "snapshot integrity mismatch"
+          assert lock["file_count"] == len(files), "snapshot file count mismatch"
+          PY
+          python scripts/build.py --upstream vendor/upstream --out . --target claude --check
+          # OpenAI M is still only a candidate pending platform validation.
+          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
+          git diff --check
+
       - name: Commit and push directly to main
         shell: bash
         run: |
