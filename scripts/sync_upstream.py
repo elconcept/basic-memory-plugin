@@ -116,7 +116,7 @@ def prepare_build_config(path: Path | None, sha: str) -> tuple[bytes | None, str
     version = cfg.get("version")
     if not isinstance(current, str) or not isinstance(version, str):
         raise ValueError("Build config lacks upstream_sha or version")
-    if not re.fullmatch(r"1\.0\.[0-9]+", version):
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("Unsupported version; manual review required")
     if current == sha:
         return None, version

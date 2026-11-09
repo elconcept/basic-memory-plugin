@@ -1,10 +1,21 @@
 # Plan wdrożenia: plugin `basic-memory-nas` (Claude + OpenAI)
 
-Wersja planu: 1.3.1, 2026-11-09 — decyzje właściciela mają pierwszeństwo przed wcześniejszymi założeniami
+Wersja planu: 2.0.0, 2026-11-09 (sekcja „Korekta zakresu 2.0” ma pierwszeństwo; poniżej historia 1.x) — decyzje właściciela mają pierwszeństwo przed wcześniejszymi założeniami
 Status: DO REALIZACJI W GRANICACH BRAMEK. Kierunek zatwierdzony przez recenzenta GPT. Uwagi R01–R13 ([recenzja GPT](REVIEW_GPT_2026-11-09.md)) i draft v1.2 GPT wprowadzone; odpowiedź z uzasadnieniem w [REVIEW_CLAUDE_2026-11-09.md](REVIEW_CLAUDE_2026-11-09.md). Ostatnie zatwierdzenie należy do użytkownika.
 Repozytorium: `github.com/elconcept/basic-memory-plugin` (publiczne), gałąź robocza `impl/v1`
 Upstream: `github.com/basicmachines-co/basic-memory`, gałąź `main`. Pin w `config/upstream.lock.json` (stan odniesienia: `b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5`, 2026-11-08)
 Serwer pamięci: `https://bm.xlap.pl/mcp` (Basic Memory 1.0.0 na Synology DS1821, kontener `basic-memory-server`, stack Portainera `mcp-basic-memory`), za Cloudflare Access
+
+## Korekta zakresu 2.0 (2026-11-09, wieczór) — ma pierwszeństwo przed całą resztą dokumentu
+
+Źródło: audyty Claude i GPT z 2026-11-09 oraz pierwotne założenie właściciela: plugin jest kopią oficjalnego pluginu Basic Memory, różniącą się **wyłącznie** obsługą self-hosted serwera na NAS.
+
+1. **Rdzeń = upstream 1:1.** Pakiet `basic-memory-nas` zawiera dokładnie to, co `plugins/claude-code` (Codex: `plugins/codex`) upstreamu: 8 skilli `bm-*`, `schemas/`, `output-styles/`. Brak `schemas/` w wersji 1.x był błędem funkcjonalnym (`bm-setup` z nich czyta).
+2. **`memory-*` poza rdzeniem.** Upstream traktuje je jako osobną, opcjonalną bibliotekę. Trafiają do drugiego pluginu, `basic-memory-nas-extras`, w tym samym marketplace. Instalacja wyłącznie na życzenie. Niezmiennik N3 (jedna kopia skilla na powierzchnię) pozostaje w mocy. Decyzja 5 („skille upstreamu są w pluginie”) jest zastąpiona tym punktem.
+3. **Patche tylko tam, gdzie upstream każe użyć lokalnego CLI:** `bm-setup`, `bm-status` (oba cele) oraz `memory-doctor` i `memory-okf` w extras. `bm-checkpoint` i `bm-orient` są bez zmian.
+4. **Hooki:** usunięty własny silnik checkpointów (`adapter.py`, `capture.py`, `state_store.py`, hooki PreCompact/PostToolUse/PostToolUseFailure/SessionEnd/Stop, lokalne kopie transkryptu, stan `saved`). Hooki upstreamu wymagają lokalnego CLI, którego klient z założenia nie ma. W zamian jest jeden bezstanowy hook SessionStart (`src/hooks/session_start.py`), bez sieci. Renderuje ustawienia z bloku `basicMemory` i prompt recall upstreamu. Bez konfiguracji tylko zachęca do `bm-setup` i nie zakłada projektu `main`. Checkpoint powstaje świadomie przez `bm-checkpoint`. Niezmienniki N5/N6 oraz fazy i bramki dotyczące hooków (F1, F10 i powiązane G) są nieaktualne.
+5. **Aktualizacje upstreamu:** bez zmian. Codzienny `sync-upstream.yml` integruje upstream po zielonych testach. Build zatrzymuje się, gdy zmieni się liczba skilli (8 rdzeń / 16 extras), zniknie `schemas/`, zmieni się blob patchowanego `SKILL.md` albo kotwica patcha.
+6. **Wersja 2.0.0** (zmiana łamiąca: skille przeniesione do extras). Wersjonowanie dalej podbija patch przy każdym nowym SHA upstreamu.
 
 ## Decyzje nadrzędne właściciela (2026-11-09)
 

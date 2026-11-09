@@ -1,69 +1,13 @@
 {
-  "description": "Offline-only Basic Memory checkpoint control; writes/reads use MCP from the agent",
+  "description": "Basic Memory (NAS) session brief from local settings; no network, no state",
   "hooks": {
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py\" post-tool --harness claude",
-            "timeout": 15,
-            "type": "command"
-          }
-        ],
-        "matcher": "mcp__.*__bm_(write|edit|read)"
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "hooks": [
-          {
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py\" post-tool-failure --harness claude",
-            "timeout": 15,
-            "type": "command"
-          }
-        ],
-        "matcher": "mcp__.*__bm_(write|edit|read)"
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py\" pre-compact --harness claude",
-            "timeout": 15,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py\" session-end --harness claude",
-            "timeout": 15,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py\" session-start --harness claude",
-            "timeout": 15,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/bm_hook.py\" stop --harness claude",
-            "timeout": 15,
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
+            "statusMessage": "Basic Memory session brief",
+            "timeout": 10,
             "type": "command"
           }
         ]

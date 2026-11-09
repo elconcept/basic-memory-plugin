@@ -2,9 +2,9 @@
   "author": {
     "name": "elconcept"
   },
-  "description": "Self-hosted Basic Memory knowledge graph on a remote NAS",
+  "description": "Basic Memory plugin for a self-hosted server: upstream skills, schemas and output style",
   "license": "AGPL-3.0-or-later",
   "name": "basic-memory-nas",
   "repository": "https://github.com/elconcept/basic-memory-plugin",
-  "version": "1.0.0"
+  "version": "2.0.0"
 }

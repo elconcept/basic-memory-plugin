@@ -72,7 +72,7 @@ jobs:
           set -euo pipefail
           # A green pre-build test alone does not validate regenerated assets.
           python -m unittest discover -s tests -p 'test_*.py' -v
-          python -m compileall -q scripts src claude/src
+          python -m compileall -q scripts src
           python - <<'PY'
           import json
           from pathlib import Path
@@ -96,7 +96,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           paths=(vendor/upstream config/upstream.lock.json)
-          for p in config/build.json build-info.json claude openai; do
+          for p in config/build.json build-info.json claude claude-extras openai openai-extras; do
             test -e "$p" && paths+=("$p")
           done
           git add -A -- "${paths[@]}"

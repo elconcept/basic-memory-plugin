@@ -1,0 +1,23 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "description": "Optional Basic Memory memory-* skill library; requires basic-memory-nas",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "category": "Productivity",
+        "developerName": "elconcept",
+        "displayName": "Basic Memory (NAS) extras",
+        "shortDescription": "Memory and notes via a self-hosted Basic Memory server",
+        "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+      }
+    }
+  },
+  "license": "AGPL-3.0-or-later",
+  "name": "basic-memory-nas-extras",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "2.0.0"
+}

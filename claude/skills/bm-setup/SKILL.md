@@ -15,7 +15,11 @@ the interview is done and you've confirmed the plan.
 
 ## Prerequisite check
 
-Basic Memory is **remote**, preconfigured at `https://bm.xlap.pl/mcp`. Before setup call `bm_project(command="list")` through the **plugin MCP server**. If unavailable, report the connector or OAuth problem and stop; **do not install** Basic Memory, start `uvx`, modify MCP definitions, or choose another connector. Ask for the explicit primary project; never infer one from a default or filesystem path.
+Basic Memory runs on a **self-hosted remote server** (NAS) reached through the
+plugin's MCP connection. Call `bm_project(command="list")`. If the tool is missing or
+errors, report the connector or OAuth problem and stop. Do **not** install Basic
+Memory locally, start `uvx`, or add another MCP server: this build has no local
+CLI by design.
 
 ## Interview
 
@@ -98,28 +102,22 @@ Ask only what you can't infer. Cover:
    task schemas, so I can find them precisely later — okay?" (See "Seed the
    schemas" below.)
 
-6. **Lifecycle-event capture.** "The plugin keeps a local trail of SessionStart
-   and PreCompact events for diagnostics by default. Keep that on?" Default to
-   **on**. Explain that the normal session brief and PreCompact checkpoint work
-   either way; capture adds bounded lifecycle metadata to a local inbox until
-   `bm hook flush` archives it locally. It never creates knowledge-graph notes.
-   Persist the JSON boolean `false` only when the user opts out.
-   - Capture stays local and personal. It never writes directly to team projects.
+6. **Lifecycle-event capture.** Not available in this build: upstream records it
+   through the local CLI, which a remote NAS setup doesn't have. Skip the question
+   and omit `captureEvents`.
 
 7. **How active should I be? (output style)** "Want me to proactively capture —
    search the graph before recalling, write material decisions as typed notes, and
-   cite permalinks? Or keep it quiet (just the session brief, the PreCompact
-   checkpoint, and `/basic-memory-nas:bm-remember` on demand)?" Enabling it sets
+   cite permalinks? Or keep it quiet (just the session brief, plus
+   `/basic-memory-nas:bm-remember` and `/basic-memory-nas:bm-checkpoint` on demand)?" Enabling it sets
    `outputStyle: "basic-memory"`. Default to enabled; leave it off for a recall-only,
    low-noise setup. (This is the single knob for how proactive the assistant is —
    the hooks always run regardless.)
 
-8. **Shared skills** (optional, default yes). "Want the full Basic Memory toolkit —
-   the shared `memory-*` skills (`memory-notes`, `memory-tasks`, `memory-research`,
-   `memory-schema`, `memory-defrag`, …)? I can install them alongside this plugin."
-   These are the canonical, framework-agnostic skills (the same set OpenClaw bundles).
-   This plugin ships only the Claude-Code-specific glue and pulls the shared set on
-   demand — it doesn't vendor its own copies. (See "Install the shared skills" below.)
+8. **Extra skills** (optional, default no). "Want the optional `memory-*` toolkit
+   (`memory-notes`, `memory-tasks`, `memory-schema`, `memory-defrag`, …)?" In this
+   build they ship as a separate plugin, `basic-memory-nas-extras`, in the same
+   marketplace, so the core stays as lean as upstream. (See "Optional extras" below.)
 
 ## Apply (after confirming the plan)
 
@@ -129,9 +127,7 @@ from this skill's directory, then `schemas/`** (this skill is at
 `<plugin>/skills/bm-setup/`). Read `coding-session.md` for a coding profile or
 `session.md` for a general profile, then read `decision.md` and `task.md`.
 
-These schemas cover notes the Claude integration writes directly. Lifecycle
-envelopes are not notes: `bm hook flush` archives that operational trace locally,
-so there is no projected session or tool-ledger schema to seed.
+These schemas cover notes the Claude integration writes directly.
 
 For each one:
 - Check whether the chosen project already has a schema for that type
@@ -158,9 +154,10 @@ For each one:
   Required-and-proven fields are what make coding checkpoints queryable, so seed
   the schema unmodified instead of also seeding the general Session schema.
 
-### 2. Confirm bundled skills
-
-The distributed `basic-memory-nas` plugin already bundles the supported `memory-*` skills. Confirm their presence in this plugin, report any missing skill, and stop if the package is incomplete. Do **not** install or copy skills into a user/global directory, do not invoke a package manager, and do not introduce duplicate plugin instances.
+### 2. Optional extras (if the user opted in)
+Tell the user to install `basic-memory-nas-extras` from the same plugin
+marketplace as this plugin. Do not run `npx`, copy skills into `~/.claude/skills`,
+or install the official cloud plugin: one copy of each skill per surface.
 
 ### 3. Write settings
 Build the `basicMemory` block from the interview:
@@ -173,10 +170,8 @@ Build the `basicMemory` block from the interview:
     "captureFolder": "sessions",
     "rememberFolder": "bm-remember",
     "recallTimeframe": "3d",
-    "preCompactCapture": "extractive",
     "sessionProfile": "coding",
     "repository": "owner/name",
-    "captureEvents": true,
     "placementConventions": "<learned or suggested summary, or null>",
     "teamProjects": {}
   },
@@ -193,29 +188,39 @@ Only include `outputStyle` if the user opted in. Ask whether this is a **team
 default** (write/merge into `.claude/settings.json`, suggest committing it) or
 **personal** (`.claude/settings.local.json`). **Merge** into any existing file —
 read it, add/replace only the keys above, preserve everything else. Use compact,
-valid JSON. Always persist `captureEvents` as a JSON boolean.
+valid JSON.
 
 Writing the `basicMemory` block is also what stops the SessionStart hook's first-run
 nudge — the config's presence is the signal that setup has run.
 
-### 4. Smoke-test through MCP
+### 4. Smoke-test the wiring
+Before you close, prove recall resolves through MCP — this catches a misnamed
+project or a ref that doesn't route while the user is still here to fix it.
 
-Call `bm_project(command="list")` and a **project-scoped** `bm_search` for open decisions and schemas. If reads fail or the selected project is missing, stop and report the exact error. Do not run Basic Memory CLI on the client; CLI administration runs only in the authorized NAS container. Hook health is **not verified** until the separately reviewed T05 hook implementation passes its event and checkpoint tests; report this explicitly. Do not claim setup completed by observing configuration alone.
+- **Primary:** `bm_search` with `filters={"type": "decision", "status": "open"}`,
+  `page_size` 5, `project=<primaryProject>`. `0 results` is fine; an **error** means
+  the ref doesn't route.
+- **Seeded schemas:** `bm_search` with `filters={"type": "schema"}` in the same
+  project should return the schemas you just seeded. For a coding setup, confirm
+  the `Coding Session` schema is present.
+- **One shared project** (only if `secondaryProjects` is non-empty): the same
+  open-decision query against the first ref.
+
+If a query errors, surface it and fix the project ref before closing.
 
 ## Close
 
 Confirm what you did in a few lines: the project mapping, the session profile
 (and confirmed repository for a coding setup), which schemas were seeded vs.
 already present, whether placement was learned or suggested, the smoke-test
-result, whether lifecycle-event capture is enabled, the shared hook inbox/flush
-state, and whether the output style is on.
+result, and whether the output style is on.
 
 Then handle activation based on the output style:
 - **Output style enabled** → it's fixed at session start, so the full capture
   reflexes only take effect next session. Prompt the user to **restart the session**
   (start a new Claude Code session) to activate them. Be precise so it doesn't read
-  as "nothing works yet": recall is already live this session (the SessionStart
-  hook's prompt ran), and the PreCompact checkpoint works now too — only the
+  as "nothing works yet": the session brief picks up the new settings at the
+  next start too, and `/basic-memory-nas:bm-checkpoint` works now — only the
   proactive-capture reflexes wait for the restart.
 - **Output style off** → no restart needed; the hooks already run.
 

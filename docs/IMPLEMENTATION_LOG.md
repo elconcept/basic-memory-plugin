@@ -138,3 +138,10 @@ Ten fragment koryguje historyczny stan powyżej; poprzednich wyników i błędó
 - **NAS:** nie modyfikowano danych instancji Basic Memory; brak migracji i reindeksacji.
 
 **Następne kroki:** dowód załadowania pluginu w Claude i ChatGPT, weryfikacja prawdziwego formatu odpowiedzi MCP, pełne E2E 6/6, dopiero potem formalne ukończenie F1 i wdrożenia.
+
+## 2026-11-09 — v2.0.0: parytet z upstreamem
+
+- Rdzeń `claude/` = 8 `bm-*` + `schemas/` + `output-styles/` + `.mcp.json` (NAS) + bezstanowy hook SessionStart.
+- `claude-extras/` (oraz `openai-extras/`) = 16 `memory-*`, osobny plugin w marketplace.
+- Usunięty silnik checkpointów i jego testy; patche `bm-checkpoint`/`bm-orient` usunięte; patche `bm-setup`/`bm-status` przepisane na MCP-only; usunięte z treści nazwy wewnętrzne (T05, nazwy hostów).
+- Koszt listingu skilli rdzenia: ~2,1 tys. znaków (wcześniej ~5,4 tys. dla 24 skilli).
