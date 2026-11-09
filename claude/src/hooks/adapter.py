@@ -229,16 +229,20 @@ class Adapter:
                                   "failed:missing_precompact")
                 mine = self.store.pending_for_session(sid)
             for checkpoint in mine[:5]:
+                material = checkpoint.get("material", [])
+                material_label = ", ".join(material) if checkpoint.get("project") else "WITHHELD (unassigned project)"
                 pieces.append(
                     f"REQUIRED checkpoint {checkpoint['ck']} capture={checkpoint['capture']} "
-                    f"project={checkpoint['project'] or 'UNASSIGNED'}. "
-                    "Use basic-memory-nas:bm-checkpoint to write and read back the same note. "
-                    "Do not claim saved before verified readback."
+                    f"project={checkpoint['project'] or 'UNASSIGNED'} "
+                    f"material_files={material_label or 'NONE'}. "
+                    "Use basic-memory-nas:bm-checkpoint in hook mode, read every material file, "
+                    "write a note and read it back. Do not claim saved before verified readback."
                 )
         retries = self.store.retries(self.project, sid, limit=5)
         if retries:
+            tasks = [e["ck"] + " material_files=" + (", ".join(e.get("material", [])) or "NONE") for e in retries]
             pieces.append("Unfinished checkpoints for project " + str(self.project) + ": " +
-                          ", ".join(e["ck"] for e in retries) + ". Retry through bm-checkpoint.")
+                          "; ".join(tasks) + ". Retry through bm-checkpoint.")
         unassigned = self.store.unassigned(limit=5)
         if unassigned:
             pieces.append("Unassigned checkpoints: " + ", ".join(e["ck"] for e in unassigned) +

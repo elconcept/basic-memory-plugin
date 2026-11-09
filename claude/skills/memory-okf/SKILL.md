@@ -98,6 +98,10 @@ links. Fix the ones a reader will follow (see **memory-curate**).
 
 ## Local Export and Check
 
+### Self-hosted NAS execution boundary
+
+This deployment connects to a remote Basic Memory server over MCP. CLI operations (wiki, OKF export/check) are **server-side operations**, not commands to install or execute on the local Claude/Codex workstation. Only an authorized administration tool may execute the installed CLI in the NAS container, after confirming its actual path and target project; otherwise explain the limitation and provide a manual operator command. Never perform deletion, overwrite, migration or a destructive repair without explicit user authorization. Preparing notes through MCP remains available to connected clients.
+
 With the `bm` CLI and a local project, you can run the export and check it:
 
 ```bash

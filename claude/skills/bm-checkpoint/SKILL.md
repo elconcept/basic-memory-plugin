@@ -16,6 +16,48 @@ and pass the selected project's external ID as `project` on note/search calls.
 With several addressable projects, these calls require an explicit scope even
 when a default is configured.
 
+## Automatic hook checkpoint mode (only when checkpoint_key is supplied)
+
+This special mode is activated **only** by a Basic Memory NAS lifecycle hook
+with an exact checkpoint_key value. It takes precedence over the deliberate
+manual checkpoint format below; ordinary user-requested checkpoints still
+follow all upstream rules, including immutable Codex checkpoint lineage.
+
+1. **Resolve the project first.** Use the explicit project in the hook
+   instruction, or confirm the sole/default project through bm_project. In this
+   vanilla NAS installation the verified default is main. Never write to a
+   secondary project or reuse a note from another project.
+2. **Read source material.** Read all listed local material_files completely
+   before composing the checkpoint. If NONE, record the capture failure and
+   use only available current context. Do not invent lost details. Preserve
+   every decision candidate as a decision or explicitly classify it as not a
+   decision, with justification. State whether source capture was partial.
+3. **Idempotency.** Search this same project using structured metadata filter
+   checkpoint_key=<exact ck>. If no matching note exists, create one using
+   bm_write with note type session or coding_session and frontmatter fields
+   checkpoint_key, session_id, seq, trigger, capture, material_complete.
+   **Include a separate exact body line**: checkpoint_key: <exact ck>.
+   If a matching note already exists, read it and only append missing
+   checkpoint material via bm_edit according to the installed bm_man contract;
+   never overwrite the full note or edit an unrelated checkpoint.
+4. **Required structure.** Cover Problem, Approach, Decisions, Changes,
+   Artifacts (file paths, commit SHAs, PRs), Verification (only checks actually
+   run), Open Questions/Blockers, Next Action and Source Material. Distinguish
+   direct user statements, independently verified findings and interpretations.
+5. **Readback is mandatory.** After the write/edit, obtain the exact note
+   identifier from the tool result, call bm_read on that identifier with the
+   same explicit project, and confirm that its body contains the exact line
+   checkpoint_key: <exact ck>. If any step is unavailable, report failure.
+6. Do not run local basic-memory, uvx, Docker, SSH or a separate MCP connection
+   to save the checkpoint. The plugin's trusted PostToolUse hook decides
+   whether local status becomes saved. **A model declaration or the existence
+   of a permalink alone is not confirmation.** Do not invoke the terminal-only
+   bm_hook.py confirm. For a client without PostToolUse support, an authorized
+   report action means reported_by_model, never saved.
+
+This hook mode is an emergency continuity path, not a substitute for durable
+bm-decide and bm-remember notes recorded during normal work.
+
 ## Gather
 
 Resolve config: read the `basicMemory` block with the same precedence the hooks
