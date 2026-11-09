@@ -16,7 +16,7 @@ class AdapterTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.store = StateStore(self.root / "state")
         self.config = dict(
-            primaryProject="legal", allowedProjects=["legal", "main"],
+            primaryProject="proj-a", allowedProjects=["proj-a", "main"],
             checkpointOnCompact=True, checkpointOnSessionEnd=True,
             sessionEndMinTurns=3, materialMaxBytes=4096, materialMaxParts=2,
             captureFolder="sessions", orientOnStart=True,
@@ -33,17 +33,17 @@ class AdapterTests(unittest.TestCase):
         ck = self.adapter.pre_compact(self.event)["ck"]
         entry = self.store.get(ck)
         self.assertEqual(entry["status"], "pending")
-        self.assertEqual(entry["project"], "legal")
+        self.assertEqual(entry["project"], "proj-a")
         self.assertTrue(entry["material"])
         self.assertEqual(os.stat(entry["material"][0]).st_mode & 0o777, 0o600)
         write = {
             "tool_name": "mcp__plugin_basic-memory-nas_basic-memory__bm_write",
-            "tool_input": {"project": "legal", "content": f"checkpoint_key: {ck}"},
+            "tool_input": {"project": "proj-a", "content": f"checkpoint_key: {ck}"},
             "tool_response": {"id": "notes/verify-1", "content": [{"type": "text", "text": "ok"}]},
         }
         result = self.adapter.post_tool(write)
         self.assertEqual(result["status"], "written")
-        read = {"tool_name": "bm_read", "tool_input": {"project": "legal", "identifier": "notes/verify-1"},
+        read = {"tool_name": "bm_read", "tool_input": {"project": "proj-a", "identifier": "notes/verify-1"},
                 "tool_response": {"content": [{"type": "text", "text": f"# Note\ncheckpoint_key: {ck}\n"}]}}
         self.assertEqual(self.adapter.post_tool(read)["status"], "saved")
         self.assertIsNone(self.adapter.stop(self.event))
@@ -58,12 +58,12 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(self.store.get(ck)["status"], "pending")
         self.adapter.post_tool({
             "tool_name": "bm_write",
-            "tool_input": {"project": "legal", "content": f"checkpoint_key: {ck}"},
+            "tool_input": {"project": "proj-a", "content": f"checkpoint_key: {ck}"},
             "tool_response": {"id": "notes/a", "content": "ok"},
         })
         self.adapter.post_tool({
             "tool_name": "bm_read",
-            "tool_input": {"project": "legal", "identifier": "notes/a"},
+            "tool_input": {"project": "proj-a", "identifier": "notes/a"},
             "tool_response": {"content": "checkpoint_key: ck-0000000000000000"},
         })
         self.assertEqual(self.store.get(ck)["status"], "written")
@@ -74,7 +74,7 @@ class AdapterTests(unittest.TestCase):
     def test_tool_failure_and_report_never_claim_saved(self):
         ck = self.adapter.pre_compact(self.event)["ck"]
         self.adapter.post_tool({"tool_name": "bm_write", "tool_input": {
-            "project": "legal", "content": f"checkpoint_key: {ck}"}, "error": "blocked"}, failure=True)
+            "project": "proj-a", "content": f"checkpoint_key: {ck}"}, "error": "blocked"}, failure=True)
         self.assertEqual(self.store.get(ck)["status"], "failed")
         self.store.reported_by_model(ck, "declared/ref")
         self.assertEqual(self.store.get(ck)["status"], "reported_by_model")
@@ -84,7 +84,7 @@ class AdapterTests(unittest.TestCase):
         obj = unassigned.session_start(dict(self.event, source="compact"))
         self.assertIn("UNASSIGNED", obj["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(self.store.status()["counts"], {"pending": 1})
-        self.assertEqual(self.store.retries("legal", "other"), [])
+        self.assertEqual(self.store.retries("proj-a", "other"), [])
         self.assertEqual(self.store.get(self.store.unassigned()[0]["ck"])["capture"],
                          "failed:missing_precompact")
 
@@ -101,8 +101,8 @@ class AdapterTests(unittest.TestCase):
         (home / ".claude").mkdir(parents=True)
         (self.root / ".claude").mkdir()
         (home / ".claude/settings.json").write_text(json.dumps({"basicMemory": {"primaryProject": "main"}}))
-        (self.root / ".claude/settings.json").write_text(json.dumps({"basicMemory": {"primaryProject": "legal"}}))
-        self.assertEqual(settings(self.root, "claude", {"HOME": str(home)})["primaryProject"], "legal")
+        (self.root / ".claude/settings.json").write_text(json.dumps({"basicMemory": {"primaryProject": "proj-a"}}))
+        self.assertEqual(settings(self.root, "claude", {"HOME": str(home)})["primaryProject"], "proj-a")
         self.assertIsNone(settings(self.root / "unused", "codex", {"HOME": str(home)})["primaryProject"])
 
     def test_only_structured_ref_is_accepted(self):

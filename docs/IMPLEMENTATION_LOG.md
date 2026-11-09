@@ -60,6 +60,7 @@
 - **Licencja:** repo i plugin na AGPL-3.0-or-later. Dodany `LICENSE` w korzeniu i w `claude/`, `openai/`; `plugin.json` obu celów ma `license: AGPL-3.0-or-later`. Wcześniejsze MIT nie było uzgodnione z użytkownikiem.
 - **Projekty:** wdrożenie vanilla, jeden projekt `main`. `legal`/`model-memory` to projekty dawnej, nieudanej instalacji, bez związku z tym wdrożeniem. Usunięte z planu, skilli i testów (`assign`/`allowedProjects` wycofane z planu).
 - **Upstream:** worker commituje bezpośrednio na `main` po zielonych testach; ochrona gałęzi `main` zdjęta; PR #3 zamknięty. Blokady PR (draft, `needs-review`, wymagany `validate`, wymuszanie dla admina) nie były uzgodnione z użytkownikiem.
+- **Do wykonawcy (F1b):** usunąć z `src/hooks/adapter.py` i `state_store.py` obsługę `assign`/`allowedProjects` i komunikat o braku `primaryProject`; projekt = `primaryProject` albo domyślny projekt serwera, a wpis z `project: null` przyjmuje projekt z pierwszego udanego zapisu (PLAN 1.2.1 N8, 7.4).
 
 ## Nieukończone etapy (dla następnego modelu)
 
