@@ -63,7 +63,7 @@ def skill_dirs(root: Path, prefix: str) -> list[Path]:
     return dirs
 
 
-def read_skill(source: Path, override: Path | None, name: str, namespace: str) -> dict[str, bytes]:
+def read_skill(source: Path, override: Path | None, patch_file: Path, name: str, namespace: str) -> dict[str, bytes]:
     source_dir = source
     files: dict[str, bytes] = {}
     for f in sorted(source_dir.rglob("*")):
@@ -83,6 +83,17 @@ def read_skill(source: Path, override: Path | None, name: str, namespace: str) -
             text = text.replace("/basic-memory:", "/basic-memory-nas:")
             text = text.replace("basic-memory:bm-", "basic-memory-nas:bm-")
             text = text.replace("codex:bm-", "basic-memory-nas:bm-")
+            if f.name == "SKILL.md" and patch_file.is_file():
+                if override is not None and override.is_file():
+                    raise ValueError(f"Override and patch conflict: {name}")
+                document = json.loads(patch_file.read_text(encoding="utf-8"))
+                if not isinstance(document, dict) or not isinstance(document.get("replacements"), list):
+                    raise ValueError(f"Invalid patch document: {patch_file}")
+                for replacement in document["replacements"]:
+                    old, new = replacement["old"], replacement["new"]
+                    if not old or text.count(old) != 1:
+                        raise ValueError(f"Upstream patch anchor changed: {name} / {old[:60]!r}")
+                    text = text.replace(old, new, 1)
             data = text.encode("utf-8")
         files[rel] = data
     if "SKILL.md" not in files:
@@ -112,7 +123,10 @@ def select_skills(upstream: Path, overrides: Path, target: str) -> dict[str, byt
             override_path = overrides / name / (target + ".md")
             if not override_path.is_file():
                 override_path = overrides / name / "SKILL.md"
-            result = read_skill(skill, override_path, name, target)
+            patch = overrides.parent.parent / "patches" / "skills" / name / (target + ".json")
+            if not patch.is_file():
+                patch = overrides.parent.parent / "patches" / "skills" / name / "all.json"
+            result = read_skill(skill, override_path, patch, name, target)
             for rel, data in result.items():
                 key = f"skills/{name}/{rel}"
                 if key in files:

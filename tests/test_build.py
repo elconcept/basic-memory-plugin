@@ -69,6 +69,19 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Blocked"):
             build(self.source, self.out, self.overrides, self.config, "claude", False, None)
 
+    def test_patches_preserve_upstream_and_fail_on_anchor_drift(self):
+        p = self.source / "plugins/claude-code/skills/bm-test0/SKILL.md"
+        p.write_text(p.read_text() + "\nRemote context should not use LOCAL_SETUP.")
+        patch = self.overrides.parent / "patches" / "skills" / "bm-test0" / "claude.json"
+        patch.parent.mkdir(parents=True)
+        patch.write_text(json.dumps({"replacements": [{"old": "LOCAL_SETUP", "new": "REMOTE_MCP_ONLY"}]}))
+        build(self.source, self.out, self.overrides, self.config, "claude", False, None)
+        self.assertIn("REMOTE_MCP_ONLY", (self.out / "claude/skills/bm-test0/SKILL.md").read_text())
+        self.assertIn("LOCAL_SETUP", p.read_text())
+        p.write_text(p.read_text().replace("LOCAL_SETUP", "something else"))
+        with self.assertRaisesRegex(ValueError, "anchor changed"):
+            build(self.source, self.out, self.overrides, self.config, "claude", False, None)
+
     def test_schema_name_drift_stops(self):
         file = self.source / "skills/memory-test0/SKILL.md"
         file.write_text(file.read_text().replace("memory-test0", "memory-someother"))
