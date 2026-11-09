@@ -28,6 +28,13 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Check upstream lock syntax
         run: python -c "import json; p=json.load(open('config/upstream.lock.json')); assert len(p['upstream_sha'])==40"
+      - name: Confirm tracked plugin artifacts match pinned upstream source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f vendor/upstream/skills/memory-capture/SKILL.md
+          python scripts/build.py --upstream vendor/upstream --out . --target claude --check
+          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
       - name: Detect secrets in repository files
         uses: gitleaks/gitleaks-action@v2
         env:
