@@ -51,3 +51,16 @@ jobs:
             --sha "$(git -C upstream rev-parse HEAD)" \
             --report "$RUNNER_TEMP/bm-upstream-report.md"
           python -c 'import json,os;from pathlib import Path;p=Path(os.environ["RUNNER_TEMP"])/"bm-upstream-lock.json";d=json.loads(p.read_text());assert d["file_count"] >= 35,d'
+
+      - name: Build and verify Claude candidate from pinned upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target claude
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target claude --check
+      - name: Validate portable OpenAI package candidate (not authorized for deployment)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target openai --openai-variant M
+          python scripts/build.py --upstream upstream --out "$RUNNER_TEMP/bm-artifacts" --target openai --openai-variant M --check
