@@ -16,7 +16,7 @@ class BuildTests(unittest.TestCase):
         root = Path(self.temp.name)
         self.source = root / "source"
         self.out = root / "out"
-        self.overrides = root / "overrides"
+        self.overrides = root / "overrides" / "skills"
         self.config = root / "config.json"
         self.config.write_text(json.dumps({
             "plugin_name": "basic-memory-nas", "mcp_server_key": "basic-memory",
@@ -72,7 +72,7 @@ class BuildTests(unittest.TestCase):
     def test_patches_preserve_upstream_and_fail_on_anchor_drift(self):
         p = self.source / "plugins/claude-code/skills/bm-test0/SKILL.md"
         p.write_text(p.read_text() + "\nRemote context should not use LOCAL_SETUP.")
-        patch = self.overrides.parent / "patches" / "skills" / "bm-test0" / "claude.json"
+        patch = self.overrides.parent.parent / "patches" / "skills" / "bm-test0" / "claude.json"
         patch.parent.mkdir(parents=True)
         patch.write_text(json.dumps({"replacements": [{"old": "LOCAL_SETUP", "new": "REMOTE_MCP_ONLY"}]}))
         build(self.source, self.out, self.overrides, self.config, "claude", False, None)
