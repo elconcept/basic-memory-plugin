@@ -153,17 +153,19 @@ def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str
         "# Basic Memory upstream attribution\n\n"
         f"Upstream repository: https://github.com/basicmachines-co/basic-memory\n"
         f"Source revision: {cfg['upstream_sha']}\n\n"
-        "This candidate copies upstream skill content and other selected assets. "
-        "The main Basic Memory project declares AGPL-3.0-or-later; subcomponent "
-        "readmes describe some plugin/skill content as MIT. Before a public "
-        "release, review each included license scope and notices. This file "
-        "does not relicense upstream code.\n"
+        "This plugin is licensed under AGPL-3.0-or-later (see LICENSE). It "
+        "includes skill content and other selected assets copied from upstream "
+        "Basic Memory, which is licensed under AGPL-3.0-or-later; some upstream "
+        "subcomponents additionally declare MIT. Upstream copyright notices are "
+        "preserved.\n"
     ).encode()
+    assets["LICENSE"] = (Path(__file__).resolve().parent.parent / "LICENSE").read_bytes()
     if target == "claude":
         assets[".claude-plugin/plugin.json"] = json_bytes({
             "name": META_KEY, "version": version,
             "description": "Self-hosted Basic Memory knowledge graph on a remote NAS",
             "author": {"name": "elconcept"}, "repository": PLUGIN_REPO,
+            "license": "AGPL-3.0-or-later",
         })
         assets[".mcp.json"] = json_bytes({
             "mcpServers": {cfg["mcp_server_key"]: {"type": "http", "url": cfg["mcp_url"]}}
@@ -194,7 +196,8 @@ def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str
         assets["plugin.json"] = json_bytes({
             "$schema": OPENAI_SCHEMA, "name": META_KEY, "version": version,
             "description": "Self-hosted Basic Memory skills and remote MCP",
-            "repository": PLUGIN_REPO, "extensions": {"com.openai": ext},
+            "repository": PLUGIN_REPO, "license": "AGPL-3.0-or-later",
+            "extensions": {"com.openai": ext},
         })
     return assets
 

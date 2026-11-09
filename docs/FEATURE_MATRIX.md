@@ -72,7 +72,6 @@
 | Brak procedur refleksji/higieny | Narastanie duplikatów i nieaktualnych zadań | Cztery scheduled prompts na holyclaude |
 | Jeden wspólny `bm-*` katalog dla klientów | Utrata funkcji natywnych Codex | Dwa oddzielne zestawy upstream |
 | Brak testów importu/chronologii/wersjonowania | Wykorzystanie tylko prostych notatek | Feature-gated testy NAS i ograniczone importy |
-| Wspólna ścieżka `project=null` | Ryzyko mieszania `main` z `legal` | Stan `unassigned`, jawne przypisanie |
 | Skromny test F10 | Nie wykrywa braków bez kompakcji | 6/6 także bez kompakcji i przy dwóch kompakcjach |
 | Stałe kopie skilli bez różnic upstream | Nieaktualne skille i funkcje | GitHub sync PR z raportem SHA/zmian |
 | Niejasny reżim licencji | Ryzyko niepoprawnego vendoringu | Audyt MIT/AGPL per katalog przed publiczną publikacją źródeł |

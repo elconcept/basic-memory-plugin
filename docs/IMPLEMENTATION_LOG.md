@@ -53,10 +53,13 @@
 
 - R01–R13 przyjęte (cztery z modyfikacją), pytania 1–8 z draftu rozstrzygnięte: [REVIEW_CLAUDE_2026-11-09.md](REVIEW_CLAUDE_2026-11-09.md).
 - `docs/PLAN.md` podniesiony do v1.2; `PLAN_v1.2_DRAFT.md` wchłonięty i usunięty (historia git). Obowiązuje jedna numeracja F/G, mapowanie T→F w PLAN §11.0.
-- Blokery wykonawcze dla GPT, w kolejności:
-  1. **K1:** PR #3 nie ma checku `validate` (PR z `GITHUB_TOKEN` nie uruchamia CI). Poprawka w `sync-upstream.yml`: `actions: write` + `gh workflow run ci.yml --ref sync/upstream`; plus issue przy awarii (PLAN §9.2 pkt 6–7). PR infrastrukturalny.
-  2. **K2:** hook i walidacja bez kodu pochodnego od AGPL (`src/`, `scripts/` upstreamu); dodać `NOTICE` (PLAN N10, §6.2).
-  3. **K3:** G4 zatrzymane na rozbieżności projektów CLI (`main`) vs MCP (`main`, `legal`, `model-memory`); diagnoza tylko odczytem według PLAN G4 pkt 5, pytanie do użytkownika.
+- Blokery K1–K3 z tej recenzji **wycofane** w korekcie 1.2.1 (niżej).
+
+## Korekta użytkownika, plan 1.2.1 (2026-11-09)
+
+- **Licencja:** repo i plugin na AGPL-3.0-or-later. Dodany `LICENSE` w korzeniu i w `claude/`, `openai/`; `plugin.json` obu celów ma `license: AGPL-3.0-or-later`. Wcześniejsze MIT nie było uzgodnione z użytkownikiem.
+- **Projekty:** wdrożenie vanilla, jeden projekt `main`. `legal`/`model-memory` to projekty dawnej, nieudanej instalacji, bez związku z tym wdrożeniem. Usunięte z planu, skilli i testów (`assign`/`allowedProjects` wycofane z planu).
+- **Upstream:** worker commituje bezpośrednio na `main` po zielonych testach; ochrona gałęzi `main` zdjęta; PR #3 zamknięty. Blokady PR (draft, `needs-review`, wymagany `validate`, wymuszanie dla admina) nie były uzgodnione z użytkownikiem.
 
 ## Nieukończone etapy (dla następnego modelu)
 
@@ -90,7 +93,7 @@ Ten fragment koryguje historyczny stan powyżej; poprzednich wyników i błędó
 
 **K1 — poprawione na `main`:** [commit `09bd668a`](https://github.com/elconcept/basic-memory-plugin/commit/09bd668af7b05ab9e0f6731bfc71e33e430ce19f) dodał jawny dispatch CI dla PR bota. Worker: [udany run 42652947577](https://github.com/elconcept/basic-memory-plugin/actions/runs/42652947577); CI: [udany run 42652997942](https://github.com/elconcept/basic-memory-plugin/actions/runs/42652997942) na SHA PR #3. PR #3 jest nadal draftem i nie został scalony.
 
-**Wynik G4:** aktywny `/basic-memory-server` (1.0.0) udostępnia 12 narzędzi MCP. CLI, MCP i bieżące `config.json` wskazują wyłącznie nazwę projektu `main`. Nazwy `legal` i `model-memory` **nie zostały wykryte**; przyczyna rozbieżności z poprzednimi ustaleniami jest nierozstrzygnięta. To nie jest dowód utraty danych. Żadnych zmian bazy, reindeksacji, importu ani utworzenia nowych projektów.
+**Wynik G4:** aktywny `/basic-memory-server` (1.0.0) udostępnia 12 narzędzi MCP. CLI, MCP i bieżące `config.json` wskazują jeden projekt `main`, zgodnie z wdrożeniem vanilla. Żadnych zmian bazy, reindeksacji, importu ani utworzenia nowych projektów.
 
 **Ważne granice ukończenia:**
 - T04: wygenerowano **kandydatów**, nie potwierdzono poprawnego OAuth i instalacji. Wariant OpenAI M jest testowy. Nie ma jeszcze aktywnego adaptera hooków.

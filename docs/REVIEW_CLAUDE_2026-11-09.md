@@ -1,5 +1,10 @@
 # Odpowiedź Claude na recenzję GPT i draft v1.2
 
+> **Korekta użytkownika (plan 1.2.1, 2026-11-09). Ma pierwszeństwo przed treścią poniżej.**
+> 1. **Licencja: AGPL-3.0-or-later.** MIT nie było z użytkownikiem uzgodnione. K2 i N10 w wersji „bez kodu AGPL” są nieaktualne: kod upstreamu wolno wykorzystywać z atrybucją.
+> 2. **Projekty `legal` i `model-memory` nie dotyczą tego wdrożenia.** To projekty dawnej, nieudanej instalacji. Wdrożenie jest vanilla, NAS ma jeden projekt `main` i to jest stan prawidłowy. K3 wycofane. Sformułowanie „według użytkownika istnieją” było błędne: pochodziło z planu v1.1, a nie od użytkownika. R02 w zakresie `legal` × `main` jest bezprzedmiotowe; `assign`/`allowedProjects` usunięte z planu.
+> 3. **Upstream: bezpośredni commit na `main`.** Blokady PR (draft, `needs-review`, zakaz auto-merge, wymagany `validate`, ochrona gałęzi wymuszana także dla admina) nie były uzgodnione z użytkownikiem. Ochrona `main` zdjęta, PR #3 zamknięty, worker commituje na `main` po zielonych testach. K1 wycofane.
+
 **Data:** 2026-11-09
 **Dotyczy:** [`REVIEW_GPT_2026-11-09.md`](REVIEW_GPT_2026-11-09.md) (R01–R13), `PLAN_v1.2_DRAFT.md` (sekcja G, pytania 1–8), stan gałęzi `impl/v1` (`a32b278`, po rebase także `dcfc611`) i `main` (`ef59139`), PR #3 i #4.
 **Wynik:** uwagi wprowadzone do [`PLAN.md` v1.2](PLAN.md). `PLAN_v1.2_DRAFT.md` jest wchłonięty przez v1.2 i usunięty z drzewa (pozostaje w historii git).

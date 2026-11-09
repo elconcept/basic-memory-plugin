@@ -16,17 +16,17 @@
 
 1. Upewnić się, że plugin `cloudcli-cron` jest aktywny w CloudCLI UI (`Settings → Plugins`); obecność katalogu nie wystarcza.
 2. Zweryfikować `Claude Code` preset: binarka `claude` w kontenerze, proces uruchamiany w wybranym workspace, konfiguracja autoryzacji i dostęp do MCP `bm.xlap.pl` przez plugin `basic-memory-nas`. **Nie** przyjmować, że nowy proces CLI dziedziczy autoryzację z otwartej sesji.
-3. Utworzyć osobny **testowy** workspace, projekt Basic Memory testowy. Nie używać `legal` ani `main` dla pierwszego testu zapisu.
+3. Utworzyć osobny **testowy** workspace, projekt Basic Memory testowy. Pierwszy test zapisu w folderze testowym projektu `main`.
 4. Skonfigurować próbny prompt tylko do odczytu, kliknąć **Run Now**, sprawdzić historię, status procesu i odczyt przez `bm_project` + `bm_search`.
 5. Następny test z jedną syntetyczną notatką testową `bm_write` + `bm_read`. Zapisać dowód odczytu z właściwego projektu; po testach usunąć wyłącznie tę notatkę z identyfikatorem testowym.
-6. Dopiero po zaliczeniu włączyć cztery schedule poniżej, każdemu przypisując **jawny projekt `main`**. Dla `legal` stworzyć osobny zestaw tylko na wyraźne zlecenie i po ocenie ryzyk. Nie uruchamiać jednego promptu w wielu projektach.
+6. Dopiero po zaliczeniu włączyć cztery schedule poniżej, każdemu przypisując **jawny projekt `main`**. Nie uruchamiać jednego promptu w wielu projektach.
 6a. **Ograniczenia wymuszone konfiguracją, nie promptem** (PLAN v1.2 G7, N11): workspace harmonogramu ma `.claude/settings.json` z `permissions.deny` dla `bm_write`, `bm_edit`, `bm_move`, `bm_delete`, `bm_project_delete` (pełne nazwy z `claude_tool_prefix`). Test negatywny: prompt prosi o `bm_delete` notatki testowej → odmowa, notatka nienaruszona. Niezaliczony test = STOP (G7-C).
 7. Zapis konfiguracji tylko przez obsługiwany UI/API pluginu. Nie edytować ręcznie prywatnych ledgerów JSON.
 8. Po pierwszym zaplanowanym wykonaniu porównać status `succeeded` z rzeczywistym wynikiem MCP. Sam exit code 0 nie wystarcza do twierdzenia, że notatki zostały zapisane.
 
 ## Cztery prompty do wprowadzenia w UI CloudCLI (projekt main)
 
-Działania konserwacyjne dotyczą **wyłącznie repozytorium wiedzy Basic Memory projektu main**. Nie wykonywać wyszukiwania lub zapisu w `legal`. Wszelkie automatyczne operacje modyfikujące ważną wiedzę powinny być wyłączone do czasu zatwierdzenia polityki.
+Działania konserwacyjne dotyczą **wyłącznie repozytorium wiedzy Basic Memory projektu main**. Wszelkie automatyczne operacje modyfikujące ważną wiedzę powinny być wyłączone do czasu zatwierdzenia polityki.
 
 ### 1. Daily — memory-reflect
 
@@ -40,7 +40,7 @@ Use the basic-memory-nas:memory-reflect skill with Basic Memory project explicit
 2) Search only project "main" for recently added or changed notes, open tasks and durable decisions.
 3) Summarize new durable facts, unresolved questions and potentially contradictory claims WITH references to exact notes.
 4) Draft a dated reflection note only when bm_write and bm_read are available and the write is explicitly permitted under the configured policy; otherwise deliver a proposal without changing the knowledge base.
-5) Do not access project "legal", do not delete, merge, overwrite locked notes, or silently reinterpret source material.
+5) Do not access any other project, do not delete, merge, overwrite locked notes, or silently reinterpret source material.
 6) Return a short report: read count, note references, proposed actions, write/readback result, error status.
 ~~~
 
@@ -62,7 +62,7 @@ Read graph relationships and find orphan notes, duplicate candidates, missing re
 - Docelowy skill: `basic-memory-nas:memory-defrag`
 
 ~~~text
-Use basic-memory-nas:memory-defrag in proposal-only mode for project "main". Identify bloated notes, repeated fragments, contradictory or stale summaries. First write a proposed transformation plan with before/after note IDs, evidence and risks; do not perform any destructive or semantic change, archive, deletion, or merge. Ensure that even proposed transformations preserve provenance and the original meaning. Report the plan for user approval. Project "legal" is out of scope.
+Use basic-memory-nas:memory-defrag in proposal-only mode for project "main". Identify bloated notes, repeated fragments, contradictory or stale summaries. First write a proposed transformation plan with before/after note IDs, evidence and risks; do not perform any destructive or semantic change, archive, deletion, or merge. Ensure that even proposed transformations preserve provenance and the original meaning. Report the plan for user approval.
 ~~~
 
 ### 4. Weekly — memory-lifecycle

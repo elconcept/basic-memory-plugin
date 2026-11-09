@@ -17,32 +17,32 @@ class LedgerTests(unittest.TestCase):
         self.store = StateStore(self.path)
 
     def test_saved_needs_readback_same_ref_project_and_exact_line(self):
-        entry = self.store.create("session-A", "auto", "claude", "legal", "ok", ["m.md"], True)
+        entry = self.store.create("session-A", "auto", "claude", "proj-a", "ok", ["m.md"], True)
         ck = entry["ck"]
-        self.store.written(ck, "legal", "notes/id-1")
+        self.store.written(ck, "proj-a", "notes/id-1")
         for args in [
             ("main", "notes/id-1", f"checkpoint_key: {ck}"),
-            ("legal", "notes/id-2", f"checkpoint_key: {ck}"),
-            ("legal", "notes/id-1", f"prefix checkpoint_key: {ck}"),
-            ("legal", "notes/id-1", f"checkpoint_key: {ck}abc"),
+            ("proj-a", "notes/id-2", f"checkpoint_key: {ck}"),
+            ("proj-a", "notes/id-1", f"prefix checkpoint_key: {ck}"),
+            ("proj-a", "notes/id-1", f"checkpoint_key: {ck}abc"),
         ]:
             with self.assertRaises(CheckpointError):
                 self.store.readback(ck, *args)
         self.assertEqual(self.store.status()["counts"], {"written": 1})
-        result = self.store.readback(ck, "legal", "notes/id-1", f"Title\ncheckpoint_key: {ck}\n")
+        result = self.store.readback(ck, "proj-a", "notes/id-1", f"Title\ncheckpoint_key: {ck}\n")
         self.assertEqual(result["status"], "saved")
         self.assertEqual(result["history"][-1]["by"], "post-tool")
 
     def test_unassigned_never_enqueued_for_any_project(self):
         entry = self.store.create("s", "auto", "codex", None, "failed:missing_precompact")
         ck = entry["ck"]
-        self.assertEqual(self.store.retries("legal", "another"), [])
+        self.assertEqual(self.store.retries("proj-a", "another"), [])
         with self.assertRaises(CheckpointError):
-            self.store.written(ck, "legal", "r")
+            self.store.written(ck, "proj-a", "r")
         with self.assertRaises(CheckpointError):
-            self.store.assign(ck, "legal", ["main"])
-        self.store.assign(ck, "legal", ["legal", "main"])
-        self.assertEqual([x["ck"] for x in self.store.retries("legal", "another")], [ck])
+            self.store.assign(ck, "proj-a", ["main"])
+        self.store.assign(ck, "proj-a", ["proj-a", "main"])
+        self.assertEqual([x["ck"] for x in self.store.retries("proj-a", "another")], [ck])
         self.assertEqual(self.store.retries("main", "another"), [])
 
     def test_report_model_never_saved(self):

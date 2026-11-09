@@ -12,7 +12,7 @@
 - `basic-memory --version` **bez ścieżki absolutnej** zwraca `command not found` w zwykłym `docker exec sh`.
 - `/app/.venv/bin/basic-memory --version` działa i zwraca **1.0.0**. Python systemowy `/usr/local/bin/python3` nie widzi metadanych pakietu; właściwa instalacja jest w `/app/.venv`.
 - `/app/.venv/bin/basic-memory project list --json` zwrócił **jeden projekt: `main`**, `local_path=/basic-memory`, `is_default=true`.
-- **Nie** sprawdzono jeszcze `bm_project` przez właściwy endpoint MCP i nie ustalono tożsamości bazy CLI/MCP. Wcześniejszy plan wymieniał `main`, `legal`, `model-memory`; tej rozbieżności **nie wolno** interpretować jako utraty danych ani naprawiać bez dalszej diagnostyki.
+- **Nie** sprawdzono jeszcze `bm_project` przez właściwy endpoint MCP i nie ustalono tożsamości bazy CLI/MCP. Jeden projekt `main` to stan oczekiwany dla wdrożenia vanilla (PLAN 1.2.1).
 - Nie wykonywano restartu, instalacji, zmian migracji, modyfikacji bazy ani usuwania danych.
 
 ## Wnioski wykonawcze dla v1.2
