@@ -69,3 +69,34 @@
 7. **T10** end-to-end 6/6 z dwóch niezależnych sesji; dopiero wtedy propozycja merge do main.
 
 Nie wolno opisywać `cloudcli-cron` jako aktywnego harmonogramu utrzymania pamięci ani snapshot PR #3 jako zaktualizowanego pluginu: oba mają jeszcze niezrealizowane bramki.
+
+## Kontynuacja wykonawcza — 2026-11-09, po recenzji Claude
+
+Ten fragment koryguje historyczny stan powyżej; poprzednich wyników i błędów nie usunięto z dziennika.
+
+| Commit | Zrealizowany zakres | Potwierdzenie |
+|---|---|---|
+| `a32b2780` | T04a: generator kandydatów `claude` i `openai`, osobne natywne skille, brak hooków i sekretów, testy | CI 42650263596 — PASS |
+| `8f086a0a`, `465ddca0` | T04b: zamiany zakotwiczone w upstream, poprawiony test ścieżki overrides | CI 42651375371 — PASS |
+| `303fb45a` | T04c: adaptacje `bm-setup`, `bm-status`, `memory-doctor` dla NAS (projekt bez lokalnej instalacji) | testy po poprawce — PASS |
+| `d6b4ec18` | T04d: obie paczki generowane i porównywane na rzeczywistym `b7d4006` w CI | CI 42651451415 — PASS |
+| `4a2125ee`, `49d40feb` | T04e/f: katalogi marketplace i ręczny GH Actions build+draft PR | runner 42651891422 — PASS |
+| `dcfc6114` | T04f: PR #5 80 wygenerowanych plików, przetestowany i scalony **wyłącznie do `impl/v1`** | CI 42652071779 — PASS |
+| `60703dc3` | F2: każdy patch przypięty do konkretnego Git blob SHA źródłowego skilla | CI 42653302434 — PASS |
+| `c91f4644` | F9: wersja kandydatów zwiększana raz na nowe SHA upstream | CI 42653708782 — PASS |
+| `c65dc03a` | F9: przygotowanie generowania i testów obu pakietów w PR workera na `impl/v1` | CI 42654068015 — PASS; **nieaktywne na `main`** |
+| `3fdcfa34` | G4: odczytowe porównanie CLI, aktywnego MCP i nazw projektów konfiguracji | [NAS_MCP_PROBE.md](NAS_MCP_PROBE.md) |
+| `22f46cad` | F1a: lokalna maszyna stanów checkpointów, zapis atomowy z blokadą, dokładny readback | CI 42655115320 — PASS |
+
+**K1 — poprawione na `main`:** [commit `09bd668a`](https://github.com/elconcept/basic-memory-plugin/commit/09bd668af7b05ab9e0f6731bfc71e33e430ce19f) dodał jawny dispatch CI dla PR bota. Worker: [udany run 42652947577](https://github.com/elconcept/basic-memory-plugin/actions/runs/42652947577); CI: [udany run 42652997942](https://github.com/elconcept/basic-memory-plugin/actions/runs/42652997942) na SHA PR #3. PR #3 jest nadal draftem i nie został scalony.
+
+**Wynik G4:** aktywny `/basic-memory-server` (1.0.0) udostępnia 12 narzędzi MCP. CLI, MCP i bieżące `config.json` wskazują wyłącznie nazwę projektu `main`. Nazwy `legal` i `model-memory` **nie zostały wykryte**; przyczyna rozbieżności z poprzednimi ustaleniami jest nierozstrzygnięta. To nie jest dowód utraty danych. Żadnych zmian bazy, reindeksacji, importu ani utworzenia nowych projektów.
+
+**Ważne granice ukończenia:**
+- T04: wygenerowano **kandydatów**, nie potwierdzono poprawnego OAuth i instalacji. Wariant OpenAI M jest testowy. Nie ma jeszcze aktywnego adaptera hooków.
+- F1a: testy modułu `src/hooks/state_store.py` nie dowodzą integracji `PreCompact`, `SessionEnd`, `PostToolUse` ani testu ciągłości 6/6. **F1 pozostaje nieukończone.**
+- `main` nadal synchronizuje źródła upstream do draft PR. Rozbudowany worker budowania i F9 znajdują się tylko na `impl/v1`, oczekują na weryfikację i merge zgodnie z bramkami.
+- `cloudcli-cron` w HolyClaude jest zainstalowany, ale cztery harmonogramy nie są jeszcze włączone. Przed ich aktywacją wymagane są F5, rzeczywisty dostęp MCP i wymuszona konfiguracją polityka read-only.
+- Obowiązuje zweryfikowany przez Claude [PLAN.md v1.2](PLAN.md), a nie usunięty draft. F0/G0, F1/F2, G4 i F11 pozostają osobnymi bramkami.
+
+**Następne zadania:** F1b (samodzielny adapter eventów i bezpieczne przechwycenie transkryptów z fixture'ami), F2 (weryfikacja skilli `bm-checkpoint` i `bm-orient`, NOTICE/licencje), aktualizacja CI i odczytowy audyt brakujących projektów przed dalszym G4. Zero domyślnego przypisywania `null` do `main` lub `legal`.
