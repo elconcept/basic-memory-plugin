@@ -1,6 +1,6 @@
 {
   "file_count": 85,
-  "integration_status": "source-staging-until-artifact-build-is-tested",
+  "integration_status": "snapshot-requires-generated-artifact-validation-before-commit",
   "snapshot_digest": "1bab9e589a90a855f12e8050af85bf61af3555ba2525f5f3357d92dd61108eb4",
   "source_repo": "basicmachines-co/basic-memory",
   "upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5"
