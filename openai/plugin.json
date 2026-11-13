@@ -11,7 +11,7 @@
         "category": "Productivity",
         "developerName": "elconcept",
         "displayName": "Basic Memory (NAS)",
-        "shortDescription": "Memory and notes via a self-hosted Basic Memory server",
+        "shortDescription": "Self-hosted Basic Memory",
         "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
       }
     }
@@ -19,5 +19,5 @@
   "license": "AGPL-3.0-or-later",
   "name": "basic-memory-nas",
   "repository": "https://github.com/elconcept/basic-memory-plugin",
-  "version": "2.0.0"
+  "version": "2.0.1"
 }
