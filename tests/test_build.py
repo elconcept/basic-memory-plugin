@@ -25,7 +25,7 @@ class BuildTests(unittest.TestCase):
         self.config.write_text(json.dumps({
             "plugin_name": "basic-memory-nas", "mcp_server_key": "basic-memory",
             "mcp_url": "https://bm.xlap.pl/mcp", "upstream_sha": "a" * 40,
-            "version": "2.0.0", "openai_core_version": "2.0.1", "exclude_skills": EXCLUDED
+            "version": "2.0.0", "openai_core_version": "2.0.2", "exclude_skills": EXCLUDED
         }))
         for base, prefix, count in [
             ("skills", "memory", 16),
@@ -101,7 +101,16 @@ class BuildTests(unittest.TestCase):
         self.assertTrue((self.out / "openai/schemas/decision.md").is_file())
         self.assertFalse((self.out / "openai/mcp.json").exists())
         manifest = json.loads((self.out / "openai/plugin.json").read_text())
-        self.assertEqual(manifest["version"], "2.0.1")
+        self.assertEqual(manifest["version"], "2.0.2")
+        self.assertEqual(manifest["extensions"]["com.openai"]["interface"]["capabilities"], [])
+        legacy = json.loads((self.out / "openai/.codex-plugin/plugin.json").read_text())
+        self.assertEqual(legacy["name"], "basic-memory-nas")
+        self.assertEqual(legacy["version"], "2.0.2")
+        self.assertEqual(legacy["skills"], "./skills")
+        self.assertNotIn("mcpServers", legacy)
+        self.assertNotIn("apps", legacy)
+        self.assertEqual(legacy["interface"]["capabilities"], [])
+        self.assertEqual(len(self.skills("openai")), 8)
         self.assertLessEqual(len(manifest["extensions"]["com.openai"]["interface"]["shortDescription"]), 30)
         extras = json.loads((self.out / "openai-extras/plugin.json").read_text())
         self.assertEqual(extras["version"], "2.0.0")
