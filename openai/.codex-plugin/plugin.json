@@ -1,0 +1,18 @@
+{
+  "author": {
+    "name": "elconcept"
+  },
+  "description": "Basic Memory plugin for a self-hosted server: upstream skills, schemas and output style",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "developerName": "elconcept",
+    "displayName": "Basic Memory (NAS)",
+    "shortDescription": "Self-hosted Basic Memory",
+    "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+  },
+  "name": "basic-memory-nas",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "skills": "./skills",
+  "version": "2.0.2"
+}
