@@ -25,7 +25,7 @@ class BuildTests(unittest.TestCase):
         self.config.write_text(json.dumps({
             "plugin_name": "basic-memory-nas", "mcp_server_key": "basic-memory",
             "mcp_url": "https://bm.xlap.pl/mcp", "upstream_sha": "a" * 40,
-            "version": "2.0.0", "exclude_skills": EXCLUDED
+            "version": "2.0.0", "openai_core_version": "2.0.1", "exclude_skills": EXCLUDED
         }))
         for base, prefix, count in [
             ("skills", "memory", 16),
@@ -92,16 +92,22 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "differ"):
             build(self.source, self.out, self.overrides, self.config, "claude", True, None)
 
-    def test_openai_core_and_oauth(self):
+    def test_openai_core_without_bundled_mcp(self):
         file = self.source / "plugins/codex/skills/bm-test0/SKILL.md"
         file.write_text(file.read_text() + "\nCodex native only.")
         r = build(self.source, self.out, self.overrides, self.config, "openai", False, "M")
         self.assertEqual(r["packages"], ["openai", "openai-extras"])
         self.assertIn("Codex native only", (self.out / "openai/skills/bm-test0/SKILL.md").read_text())
         self.assertTrue((self.out / "openai/schemas/decision.md").is_file())
-        self.assertEqual(json.loads((self.out / "openai/mcp.json").read_text())["mcpServers"]["basic-memory"]["type"],
-                         "streamable-http")
+        self.assertFalse((self.out / "openai/mcp.json").exists())
+        manifest = json.loads((self.out / "openai/plugin.json").read_text())
+        self.assertEqual(manifest["version"], "2.0.1")
+        self.assertLessEqual(len(manifest["extensions"]["com.openai"]["interface"]["shortDescription"]), 30)
+        extras = json.loads((self.out / "openai-extras/plugin.json").read_text())
+        self.assertEqual(extras["version"], "2.0.0")
         self.assertFalse((self.out / "openai/.app.json").exists())
+        self.assertEqual(build(self.source, self.out, self.overrides, self.config, "openai", True, "M")["content_sha256"],
+                         r["content_sha256"])
 
     def test_openai_approval_gates(self):
         with self.assertRaisesRegex(ValueError, "gated"):
