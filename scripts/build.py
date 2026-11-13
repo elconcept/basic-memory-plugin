@@ -4,7 +4,7 @@
 This is a packaging tool, not a Basic Memory fork. It never executes imported
 upstream source and never accesses the NAS. Each host gets two packages:
 <host> mirrors the upstream native plugin (bm-* skills, schemas, output style)
-plus the NAS MCP connection; <host>-extras carries the optional memory-* library.
+and connects to the separately registered NAS MCP; <host>-extras carries the optional memory-* library.
 """
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ DENY = ("npx skills add", "bm install claude-code", "claude plugin marketplace a
 META_KEY = "basic-memory-nas"
 PLUGIN_REPO = "https://github.com/elconcept/basic-memory-plugin"
 OPENAI_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
-OPENAI_MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
 
 
 def sha256(data: bytes) -> str:
@@ -254,19 +253,12 @@ def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str
     else:
         ext: dict = {"interface": {
             "displayName": "Basic Memory (NAS)" if kind == "core" else "Basic Memory (NAS) extras",
-            "shortDescription": "Memory and notes via a self-hosted Basic Memory server",
+            "shortDescription": "Self-hosted Basic Memory" if kind == "core" else "Basic Memory extra skills",
             "developerName": "elconcept", "category": "Productivity",
             "capabilities": ["Read", "Write"], "websiteURL": PLUGIN_REPO,
         }}
-        if kind == "core":
-            assets["mcp.json"] = json_bytes({
-                "$schema": OPENAI_MCP_SCHEMA, "mcpServers": {
-                    cfg["mcp_server_key"]: {
-                        "type": "streamable-http", "url": cfg["mcp_url"],
-                        "extensions": {"com.openai": {"auth": {"type": "oauth", "client": {"mode": "dcr"}}}}
-                    }
-                }
-            })
+        # ChatGPT uses the NAS MCP registered separately by the user.
+        # The OpenAI plugin must remain skills-only, including after rebuilds.
         assets["plugin.json"] = json_bytes({
             "$schema": OPENAI_SCHEMA, "name": name, "version": version,
             "description": description,
@@ -298,7 +290,8 @@ def build(upstream: Path, out: Path, overrides: Path, config_path: Path, target:
     version = cfg["version"]
     outputs: dict[str, dict[str, bytes]] = {}
     for host in targets:
-        outputs[host] = render(upstream, overrides, cfg, host, version, openai_variant, None, "core")
+        core_version = cfg.get("openai_core_version", version) if host == "openai" else version
+        outputs[host] = render(upstream, overrides, cfg, host, core_version, openai_variant, None, "core")
         outputs[host + "-extras"] = render(upstream, overrides, cfg, host, version, openai_variant, None, "extras")
     hosts = list(outputs)
     result = {
