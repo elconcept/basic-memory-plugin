@@ -4,10 +4,7 @@
   "extensions": {
     "com.openai": {
       "interface": {
-        "capabilities": [
-          "Read",
-          "Write"
-        ],
+        "capabilities": [],
         "category": "Productivity",
         "developerName": "elconcept",
         "displayName": "Basic Memory (NAS)",
@@ -19,5 +16,5 @@
   "license": "AGPL-3.0-or-later",
   "name": "basic-memory-nas",
   "repository": "https://github.com/elconcept/basic-memory-plugin",
-  "version": "2.0.1"
+  "version": "2.0.2"
 }
