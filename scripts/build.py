@@ -255,7 +255,7 @@ def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str
             "displayName": "Basic Memory (NAS)" if kind == "core" else "Basic Memory (NAS) extras",
             "shortDescription": "Self-hosted Basic Memory" if kind == "core" else "Basic Memory extra skills",
             "developerName": "elconcept", "category": "Productivity",
-            "capabilities": ["Read", "Write"], "websiteURL": PLUGIN_REPO,
+            "capabilities": [] if kind == "core" else ["Read", "Write"], "websiteURL": PLUGIN_REPO,
         }}
         # ChatGPT uses the NAS MCP registered separately by the user.
         # The OpenAI plugin must remain skills-only, including after rebuilds.
@@ -265,6 +265,19 @@ def render(upstream: Path, overrides: Path, cfg: dict, target: str, version: str
             "repository": PLUGIN_REPO, "license": "AGPL-3.0-or-later",
             "extensions": {"com.openai": ext},
         })
+        if kind == "core":
+            # Like the working Symetria Prawna account plugin, explicitly
+            # expose skills for clients using the legacy Codex manifest.
+            # Do not declare an MCP server: the user registers it separately.
+            assets[".codex-plugin/plugin.json"] = json_bytes({
+                "name": name,
+                "version": version,
+                "description": description,
+                "author": {"name": "elconcept"},
+                "repository": PLUGIN_REPO,
+                "skills": "./skills",
+                "interface": ext["interface"],
+            })
     return assets
 
 
