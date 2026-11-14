@@ -123,7 +123,7 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
 
 
 CORE_COUNT = 8
-EXTRAS_COUNT = 16
+EXTRAS_COUNT = 17
 
 
 def select_skills(upstream: Path, overrides: Path, target: str, kind: str = "core") -> dict[str, bytes]:

@@ -28,7 +28,7 @@ class BuildTests(unittest.TestCase):
             "version": "2.0.0", "openai_core_version": "2.0.2", "exclude_skills": EXCLUDED
         }))
         for base, prefix, count in [
-            ("skills", "memory", 16),
+            ("skills", "memory", 17),
             ("plugins/claude-code/skills", "bm", 8),
             ("plugins/codex/skills", "bm", 8),
         ]:
@@ -66,7 +66,7 @@ class BuildTests(unittest.TestCase):
 
     def test_extras_are_separate_and_mcp_free(self):
         build(self.source, self.out, self.overrides, self.config, "claude", False, None)
-        self.assertEqual(len(self.skills("claude-extras")), 16)
+        self.assertEqual(len(self.skills("claude-extras")), 17)
         self.assertFalse(any(s.startswith("bm-") for s in self.skills("claude-extras")))
         self.assertFalse((self.out / "claude-extras/.mcp.json").exists())
         self.assertFalse((self.out / "claude-extras/hooks").exists())
