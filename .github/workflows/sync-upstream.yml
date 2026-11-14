@@ -62,10 +62,10 @@ jobs:
             echo "No build generator yet: committing source snapshot only."
             exit 0
           fi
-          python scripts/build.py --upstream vendor/upstream --out . --target claude
-          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M
-          python scripts/build.py --upstream vendor/upstream --out . --target claude --check
-          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
+          python scripts/build.py --upstream upstream --out . --target claude
+          python scripts/build.py --upstream upstream --out . --target openai --openai-variant M
+          python scripts/build.py --upstream upstream --out . --target claude --check
+          python scripts/build.py --upstream upstream --out . --target openai --openai-variant M --check
       - name: Validate the exact generated release before publishing
         shell: bash
         run: |
@@ -82,11 +82,13 @@ jobs:
           files = collect(Path("vendor/upstream"))
           assert lock["upstream_sha"] == cfg["upstream_sha"], "snapshot/build SHA mismatch"
           assert lock["snapshot_digest"] == digest(files), "snapshot integrity mismatch"
+          upstream_files = collect(Path("upstream"))
+          assert lock["snapshot_digest"] == digest(upstream_files), "pristine upstream checkout and snapshot differ"
           assert lock["file_count"] == len(files), "snapshot file count mismatch"
           PY
-          python scripts/build.py --upstream vendor/upstream --out . --target claude --check
+          python scripts/build.py --upstream upstream --out . --target claude --check
           # OpenAI M is still only a candidate pending platform validation.
-          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
+          python scripts/build.py --upstream upstream --out . --target openai --openai-variant M --check
           git diff --check
 
       - name: Commit and push directly to main
