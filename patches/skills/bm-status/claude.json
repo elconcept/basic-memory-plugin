@@ -1,9 +1,9 @@
 {
-  "source_blob_sha": "b3803be61d183c53179658f4820a55b94307c3f3",
+  "source_blob_sha": "b27cfce167685d1b33014871a11f9c8e99952588",
   "replacements": [
     {
       "old": "1. **CLI reachable?** Run `basic-memory --version`, then `bm --version`, then\n   `uvx --prerelease=allow basic-memory --version`. If no launcher resolves, report the CLI status as\n   unavailable and continue with MCP/config checks. The plugin hooks can still use\n   their uv-managed environment.\n\n",
-      "new": "1. **Server reachable?** Call `bm_project(command=\"list\")` and report whether it\n   succeeds. This build talks to a remote server over MCP only; never run a local\n   `basic-memory`, `bm` or `uvx`.\n\n"
+      "new": "1. **Server reachable?** Call `bm_project_list()` and report whether it\n   succeeds. This build talks to a remote server over MCP only; never run a local\n   `basic-memory`, `bm` or `uvx`.\n\n"
     },
     {
       "old": "     `preCompactCapture` mode (default `extractive`), `sessionProfile` (default\n     `general`), `repository` (coding profile only), `captureEvents` (default\n     `true`).",
