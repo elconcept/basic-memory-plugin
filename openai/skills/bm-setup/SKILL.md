@@ -11,7 +11,7 @@ will be written.
 
 ## Preconditions
 
-Call `bm_project(command="list")` on the **configured remote MCP** (`https://bm.xlap.pl/mcp`). If it fails, stop and report connector/OAuth issues; never spawn or install a local Basic Memory server. List verified available project names/IDs, and request explicit project selection.
+Call `bm_project_list()` on the **configured remote MCP** (`https://bm.xlap.pl/mcp`). If it fails, stop and report connector/OAuth issues; never spawn or install a local Basic Memory server. List verified available project names/IDs, and request explicit project selection.
 
 ## Interview
 

@@ -3,8 +3,8 @@
   "display_name": "Basic Memory (NAS)",
   "mcp_server_key": "basic-memory",
   "mcp_url": "https://bm.xlap.pl/mcp",
-  "upstream_sha": "b7d4006bd581c80c2bf4e4ca9a95f745ccee83a5",
-  "version": "2.0.0",
+  "upstream_sha": "fb4f4c861a90b16742b2ab2e3437726cc351aafa",
+  "version": "2.0.1",
   "exclude_skills": [
     "memory-ci-capture",
     "memory-agents",
