@@ -1,5 +1,4 @@
 {
-  "source_blob_sha": "96d097f67ec02bf38c6c6ef909d2b9a333bec769",
   "replacements": [
     {
       "old": "First confirm the **Basic Memory MCP server is connected** — call\n`bm_project_list()`. If that tool isn't available or errors, Basic Memory isn't\nwired into Claude Code yet. **Stop and walk the user through it first** (everything\nbelow depends on it):\n\n1. Install it: `uv tool install basic-memory --prerelease=allow` (or\n   `pip install basic-memory`), a version exposing the 1.0 `bm_*` tools. Keep `--prerelease=allow`\n   with uv: published releases pin a FastMCP pre-release, and without the flag uv\n   silently installs an older Basic Memory release.\n2. Connect it: `claude mcp add basic-memory -- uvx --prerelease=allow basic-memory mcp`,\n   then restart the session so the MCP server loads.\n\nRe-check `bm_project_list()` before continuing — don't start the interview until\nit succeeds.\n\n",

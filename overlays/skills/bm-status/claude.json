@@ -1,5 +1,4 @@
 {
-  "source_blob_sha": "b27cfce167685d1b33014871a11f9c8e99952588",
   "replacements": [
     {
       "old": "1. **CLI reachable?** Run `basic-memory --version`, then `bm --version`, then\n   `uvx --prerelease=allow basic-memory --version`. If no launcher resolves, report the CLI status as\n   unavailable and continue with MCP/config checks. The plugin hooks can still use\n   their uv-managed environment.\n\n",

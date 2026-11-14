@@ -70,7 +70,7 @@ def skill_dirs(root: Path, prefix: str) -> list[Path]:
     return dirs
 
 
-def read_skill(source: Path, override: Path | None, patch_file: Path, name: str, namespace: str) -> dict[str, bytes]:
+def read_skill(source: Path, override: Path | None, overlay_file: Path, name: str, namespace: str) -> dict[str, bytes]:
     source_dir = source
     files: dict[str, bytes] = {}
     for f in sorted(source_dir.rglob("*")):
@@ -87,25 +87,18 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
             data = f.read_bytes()
         if f.suffix == ".md":
             text = data.decode("utf-8")
-            if f.name == "SKILL.md" and patch_file.is_file():
+            if f.name == "SKILL.md" and overlay_file.is_file():
                 if override is not None and override.is_file():
-                    raise ValueError(f"Override and patch conflict: {name}")
-                document = json.loads(patch_file.read_text(encoding="utf-8"))
+                    raise ValueError(f"Override and overlay conflict: {name}")
+                document = json.loads(overlay_file.read_text(encoding="utf-8"))
                 if not isinstance(document, dict) or not isinstance(document.get("replacements"), list):
-                    raise ValueError(f"Invalid patch document: {patch_file}")
-                expected_blob = document.get("source_blob_sha")
-                if not isinstance(expected_blob, str) or not re.fullmatch(r"[0-9a-f]{40}", expected_blob):
-                    raise ValueError(f"Patch missing pinned upstream source blob: {patch_file}")
-                upstream_content = (source / "SKILL.md").read_bytes()
-                current_blob = hashlib.sha1(
-                    b"blob " + str(len(upstream_content)).encode() + b"\0" + upstream_content
-                ).hexdigest()
-                if current_blob != expected_blob:
-                    raise ValueError(f"Patched upstream SKILL.md changed: {name}")
+                    raise ValueError(f"Invalid overlay document: {overlay_file}")
                 for replacement in document["replacements"]:
+                    if not isinstance(replacement, dict) or not isinstance(replacement.get("old"), str) or not isinstance(replacement.get("new"), str):
+                        raise ValueError(f"Invalid overlay replacement: {name}")
                     old, new = replacement["old"], replacement["new"]
                     if not old or text.count(old) != 1:
-                        raise ValueError(f"Upstream patch anchor changed: {name} / {old[:60]!r}")
+                        raise ValueError(f"Upstream overlay anchor changed: {name} / {old[:60]!r}")
                     text = text.replace(old, new, 1)
             text = normalize_namespace(text)
             data = text.encode("utf-8")
@@ -122,8 +115,8 @@ def read_skill(source: Path, override: Path | None, patch_file: Path, name: str,
     return files
 
 
-CORE_COUNT = 8
-EXTRAS_COUNT = 17
+CORE_MIN_COUNT = 8
+EXTRAS_MIN_COUNT = 17
 
 
 def select_skills(upstream: Path, overrides: Path, target: str, kind: str = "core") -> dict[str, bytes]:
@@ -133,9 +126,9 @@ def select_skills(upstream: Path, overrides: Path, target: str, kind: str = "cor
         raise ValueError(f"Unknown target: {target}")
     if kind == "core":
         root = upstream / ("plugins/claude-code/skills" if target == "claude" else "plugins/codex/skills")
-        prefix, expected = "bm-", CORE_COUNT
+        prefix, expected = "bm-", CORE_MIN_COUNT
     elif kind == "extras":
-        root, prefix, expected = upstream / "skills", "memory-", EXTRAS_COUNT
+        root, prefix, expected = upstream / "skills", "memory-", EXTRAS_MIN_COUNT
     else:
         raise ValueError(f"Unknown package kind: {kind}")
     files: dict[str, bytes] = {}
@@ -147,18 +140,19 @@ def select_skills(upstream: Path, overrides: Path, target: str, kind: str = "cor
         override_path = overrides / name / (target + ".md")
         if not override_path.is_file():
             override_path = overrides / name / "SKILL.md"
-        patch = overrides.parent.parent / "patches" / "skills" / name / (target + ".json")
-        if not patch.is_file():
-            patch = overrides.parent.parent / "patches" / "skills" / name / "all.json"
-        result = read_skill(skill, override_path, patch, name, target)
+        overlay = overrides.parent.parent / "overlays" / "skills" / name / (target + ".json")
+        if not overlay.is_file():
+            overlay = overrides.parent.parent / "overlays" / "skills" / name / "all.json"
+        result = read_skill(skill, override_path, overlay, name, target)
         for rel, data in result.items():
             key = f"skills/{name}/{rel}"
             if key in files:
                 raise ValueError(f"Duplicate skill: {name}")
             files[key] = data
         count += 1
-    if count != expected:
-        raise ValueError(f"Upstream {kind} skill count changed ({count} != {expected}); review required")
+    # Include newly added upstream skills automatically; unexpected removals fail closed.
+    if count < expected:
+        raise ValueError(f"Upstream {kind} skill count dropped ({count} < {expected}); review required")
     return files
 
 

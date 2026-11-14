@@ -79,11 +79,20 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "schemas"):
             build(self.source, self.out, self.overrides, self.config, "claude", False, None)
 
-    def test_skill_count_drift_stops(self):
-        p = self.source / "plugins/claude-code/skills/bm-new/SKILL.md"
-        p.parent.mkdir(parents=True)
-        p.write_text("---\nname: bm-new\ndescription: x\n---\n")
-        with self.assertRaisesRegex(ValueError, "core skill count"):
+    def test_new_upstream_skills_are_included_without_changing_a_counter(self):
+        for prefix,base in (("bm","plugins/claude-code/skills"),("memory","skills")):
+            p = self.source / base / (prefix + "-new") / "SKILL.md"
+            p.parent.mkdir(parents=True)
+            p.write_text("---\nname: " + prefix + "-new\ndescription: x\n---\n")
+        build(self.source, self.out, self.overrides, self.config, "claude", False, None)
+        self.assertIn("bm-new", self.skills("claude"))
+        self.assertIn("memory-new", self.skills("claude-extras"))
+
+    def test_upstream_skill_removal_still_stops_build(self):
+        removed = self.source / "plugins/claude-code/skills/bm-test0/SKILL.md"
+        removed.unlink()
+        removed.parent.rmdir()
+        with self.assertRaisesRegex(ValueError, "skill count dropped"):
             build(self.source, self.out, self.overrides, self.config, "claude", False, None)
 
     def test_check_detects_drift(self):
@@ -130,18 +139,21 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Blocked"):
             build(self.source, self.out, self.overrides, self.config, "claude", False, None)
 
-    def test_patches_preserve_upstream_and_fail_on_anchor_drift(self):
+    def test_overlays_preserve_upstream_and_fail_only_on_anchor_drift(self):
         p = self.source / "plugins/claude-code/skills/bm-test0/SKILL.md"
         p.write_text(p.read_text() + "\nRemote context should not use LOCAL_SETUP.")
-        patch = self.overrides.parent.parent / "patches" / "skills" / "bm-test0" / "claude.json"
-        patch.parent.mkdir(parents=True)
         original = p.read_bytes()
-        sha = hashlib.sha1(b"blob " + str(len(original)).encode() + b"\0" + original).hexdigest()
-        patch.write_text(json.dumps({"source_blob_sha": sha, "replacements": [{"old": "LOCAL_SETUP", "new": "REMOTE_MCP_ONLY"}]}))
+        overlay = self.overrides.parent.parent / "overlays" / "skills" / "bm-test0" / "claude.json"
+        overlay.parent.mkdir(parents=True)
+        overlay.write_text(json.dumps({"replacements": [{"old": "LOCAL_SETUP", "new": "REMOTE_MCP_ONLY"}]}))
         build(self.source, self.out, self.overrides, self.config, "claude", False, None)
+        self.assertEqual(p.read_bytes(), original, "The upstream source must remain pristine")
         self.assertIn("REMOTE_MCP_ONLY", (self.out / "claude/skills/bm-test0/SKILL.md").read_text())
+        p.write_text(p.read_text() + "\nAn unrelated upstream addition.")
+        build(self.source, self.out, self.overrides, self.config, "claude", False, None)
+        self.assertIn("An unrelated upstream addition", (self.out / "claude/skills/bm-test0/SKILL.md").read_text())
         p.write_text(p.read_text().replace("LOCAL_SETUP", "something else"))
-        with self.assertRaisesRegex(ValueError, "SKILL.md changed"):
+        with self.assertRaisesRegex(ValueError, "overlay anchor changed"):
             build(self.source, self.out, self.overrides, self.config, "claude", False, None)
 
     def test_schema_name_drift_stops(self):
