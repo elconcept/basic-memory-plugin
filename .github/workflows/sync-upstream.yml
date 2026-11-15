@@ -113,6 +113,24 @@ jobs:
           $(cat "$RUNNER_TEMP/upstream-report.md" 2>/dev/null | head -c 20000)
           EOF
           git push origin HEAD:main
+      - name: Build MCP-free ChatGPT release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/package_chatgpt.py \
+            --source openai \
+            --zip "$RUNNER_TEMP/basic-memory-nas-chatgpt.zip" \
+            --metadata "$RUNNER_TEMP/chatgpt-publish-metadata.json" \
+            --source-sha "$(python -c 'import json; print(json.load(open("config/build.json"))["upstream_sha"])')"
+      - name: Upload ChatGPT publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-memory-nas-chatgpt-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/basic-memory-nas-chatgpt.zip
+            ${{ runner.temp }}/chatgpt-publish-metadata.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Report failure as a single issue
         if: failure()
         shell: bash
