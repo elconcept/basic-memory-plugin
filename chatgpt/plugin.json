@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "basic-memory-nas",
+  "version": "2.1.0",
+  "description": "Basic Memory on your Synology NAS via the self-hosted bm.xlap.pl MCP server. Read, search, capture and resume structured project memory.",
+  "author": {
+    "name": "elconcept"
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "knowledge-base",
+    "mcp",
+    "memory"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Basic Memory (NAS)",
+        "shortDescription": "Pamięć na własnym NAS",
+        "longDescription": "Wyszukiwanie, odczyt, tworzenie notatek, decyzji i punktów wznowienia przez własny serwer Basic Memory MCP.",
+        "developerName": "elconcept",
+        "category": "Productivity",
+        "capabilities": [],
+        "websiteURL": "https://github.com/elconcept/basic-memory-plugin",
+        "defaultPrompt": "Pomóż mi pracować z Basic Memory (NAS). Najpierw zweryfikuj połączenie i dostępne projekty."
+      }
+    }
+  }
+}

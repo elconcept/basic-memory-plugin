@@ -1,22 +1,20 @@
-name: Publish ChatGPT skills bundle
+name: Package Basic Memory ChatGPT plugin
 
-# Stable, GitHub-hosted distribution for the private ChatGPT publisher.
-# This packages only openai/; it does NOT call undocumented ChatGPT APIs.
+# This publishes a GitHub release artifact, not a ChatGPT cloud release.
+# Cloud releases require an authenticated Plugin Creator update operation.
 on:
   push:
     branches: [main]
     paths:
-      - 'openai/**'
-      - 'config/build.json'
-      - 'scripts/package_chatgpt.py'
+      - 'chatgpt/**'
+      - 'scripts/package_chatgpt_remote.py'
       - '.github/workflows/publish-chatgpt.yml'
   schedule:
-    - cron: '41 5 * * *' # catches main commits made by GITHUB_TOKEN in upstream sync
+    - cron: '41 5 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
-
 concurrency:
   group: chatgpt-skills-release
   cancel-in-progress: false
@@ -29,54 +27,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-          persist-credentials: true
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify build and source snapshot
+      - name: Build and verify portable ChatGPT package with NAS MCP
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -p 'test_*.py' -v
-          python scripts/build.py --upstream vendor/upstream --out . --target claude --check
-          python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
-      - name: Package ChatGPT skills (no MCP)
+          python scripts/package_chatgpt_remote.py --source chatgpt --zip "$RUNNER_TEMP/basic-memory-nas-chatgpt.zip" --metadata "$RUNNER_TEMP/basic-memory-nas-chatgpt.json"
+      - name: Identify version and immutable commit release tag
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/package_chatgpt.py \
-            --source openai \
-            --zip "$RUNNER_TEMP/basic-memory-nas-chatgpt.zip" \
-            --metadata "$RUNNER_TEMP/basic-memory-nas-chatgpt.json" \
-            --source-sha "$(python -c 'import json; print(json.load(open("config/build.json"))["upstream_sha"])')"
-      - name: Identify immutable release
-        id: tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          from pathlib import Path
-          x = json.loads(Path('config/build.json').read_text())
-          print('tag=chatgpt-v' + x['openai_core_version'] + '-' + x['upstream_sha'][:12])
-          print('version=' + x['openai_core_version'])
-          PY
-      - name: Publish immutable package release
+          VERSION="$(python -c 'import json; print(json.load(open("chatgpt/plugin.json"))["version"])')"
+          SHORT_SHA="$(git rev-parse --short=12 HEAD)"
+          echo "TAG=chatgpt-v${VERSION}-${SHORT_SHA}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+      - name: Publish immutable GitHub archive
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.tag.outputs.tag }}
-          VERSION: ${{ steps.tag.outputs.version }}
         run: |
           set -euo pipefail
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; leaving immutable assets unchanged."
+            echo "Archive already exists for this commit."
             exit 0
           fi
-          gh release create "$TAG" \
-            "$RUNNER_TEMP/basic-memory-nas-chatgpt.zip#basic-memory-nas-chatgpt.zip" \
-            "$RUNNER_TEMP/basic-memory-nas-chatgpt.json#basic-memory-nas-chatgpt.json" \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$(git rev-parse HEAD)" \
-            --title "Basic Memory NAS ChatGPT v$VERSION (skills only)" \
-            --notes "Generated from main with verified, unmodified upstream and NAS overlays. Contains skills only; MCP remains connected independently. This GitHub release is an export, not proof of ChatGPT cloud installation." \
-            --latest
+          gh release create "$TAG" "$RUNNER_TEMP/basic-memory-nas-chatgpt.zip#basic-memory-nas-chatgpt.zip" "$RUNNER_TEMP/basic-memory-nas-chatgpt.json#basic-memory-nas-chatgpt.json" --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" --title "Basic Memory NAS ChatGPT v$VERSION (export)" --notes "Includes MCP endpoint and ChatGPT skill. GitHub artifact only: not an automatic update of the installed ChatGPT plugin." --latest

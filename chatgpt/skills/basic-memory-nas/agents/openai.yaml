@@ -1,0 +1,6 @@
+interface:
+  display_name: Basic Memory (NAS)
+  short_description: Dostęp do pamięci na NAS
+  default_prompt: Sprawdź dostęp do Basic Memory na NAS i pokaż dostępne projekty.
+policy:
+  allow_implicit_invocation: true
