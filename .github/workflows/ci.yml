@@ -55,6 +55,24 @@ jobs:
           # OpenAI M remains a candidate until platform OAuth is validated.
           python scripts/build.py --upstream vendor/upstream --out . --target openai --openai-variant M --check
 
+      - name: Build MCP-free ChatGPT release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/package_chatgpt.py \
+            --source openai \
+            --zip "$RUNNER_TEMP/basic-memory-nas-chatgpt.zip" \
+            --metadata "$RUNNER_TEMP/chatgpt-publish-metadata.json" \
+            --source-sha "$(python -c 'import json; print(json.load(open("config/build.json"))["upstream_sha"])')"
+      - name: Upload ChatGPT publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-memory-nas-chatgpt-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/basic-memory-nas-chatgpt.zip
+            ${{ runner.temp }}/chatgpt-publish-metadata.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Detect whitespace errors
         run: git diff --check
 
