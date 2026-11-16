@@ -1,0 +1,7 @@
+interface:
+  display_name: "bm-writing"
+  short_description: "Standard notatek BM"
+  default_prompt: "Zastosuj standard bm-writing do wskazanej notatki Basic Memory, zachowaj fakty i źródła."
+policy:
+  allow_implicit_invocation: false
+  products: [CHAT]

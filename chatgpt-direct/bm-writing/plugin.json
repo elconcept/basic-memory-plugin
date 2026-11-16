@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "email": "novasilentcore@gmail.com",
+    "name": "Nova"
+  },
+  "description": "Apply the Basic Memory writing standard to a supplied note or new note draft without silently switching workflows.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "capabilities": [],
+        "category": "Productivity",
+        "defaultPrompt": "Zastosuj standard bm-writing do wskazanej notatki Basic Memory, zachowaj fakty i \u017ar\u00f3d\u0142a.",
+        "developerName": "Nova",
+        "displayName": "bm-writing",
+        "longDescription": "Redaguje notatki do czytelnego Markdown z obserwacjami, relacjami i \u017ar\u00f3d\u0142ami.",
+        "shortDescription": "Standard notatek BM",
+        "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+      }
+    }
+  },
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "mcp",
+    "bm-writing"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "name": "bm-writing",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "1.0.0"
+}

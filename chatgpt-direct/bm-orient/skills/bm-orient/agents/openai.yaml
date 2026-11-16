@@ -1,0 +1,7 @@
+interface:
+  display_name: "bm-orient"
+  short_description: "Wznów pracę z pamięci"
+  default_prompt: "Odtwórz kontekst z Basic Memory. Odczytaj ostatnie decyzje, zadania i checkpointy w projekcie main, podaj źródła."
+policy:
+  allow_implicit_invocation: false
+  products: [CHAT]

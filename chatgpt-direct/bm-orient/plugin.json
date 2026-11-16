@@ -1,0 +1,32 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "bm-orient",
+  "version": "1.0.1",
+  "description": "Restore an existing project or topic from actual Basic Memory notes, active tasks, decisions and checkpoints when explicitly invoked.",
+  "author": {
+    "name": "elconcept"
+  },
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "mcp",
+    "bm-orient"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "bm-orient",
+        "shortDescription": "Wznów pracę z pamięci",
+        "longDescription": "Odtwarza kontekst z NAS: zadania, decyzje, checkpointy i powiązane notatki. Wyłącznie odczyt.",
+        "developerName": "elconcept",
+        "category": "Productivity",
+        "capabilities": [],
+        "defaultPrompt": "Odtwórz kontekst z Basic Memory. Odczytaj ostatnie decyzje, zadania i checkpointy w projekcie main, podaj źródła.",
+        "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+      }
+    }
+  }
+}

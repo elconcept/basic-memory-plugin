@@ -1,0 +1,7 @@
+interface:
+  display_name: "bm-decide"
+  short_description: "Utrwal decyzję"
+  default_prompt: "Utrwal aktualną decyzję w Basic Memory, razem z uzasadnieniem, alternatywami i skutkami. Projekt main."
+policy:
+  allow_implicit_invocation: false
+  products: [CHAT]

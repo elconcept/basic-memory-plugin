@@ -1,0 +1,7 @@
+interface:
+  display_name: "bm-remember"
+  short_description: "Zapisz krótką notatkę"
+  default_prompt: "Zapisz w Basic Memory tę informację, zachowując moje brzmienie. Projekt main."
+policy:
+  allow_implicit_invocation: false
+  products: [CHAT]

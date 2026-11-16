@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "email": "novasilentcore@gmail.com",
+    "name": "Nova"
+  },
+  "description": "Bootstrap and verify a Basic Memory project through remote MCP: mapping, placement conventions, note schemas and smoke tests.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "capabilities": [],
+        "category": "Productivity",
+        "defaultPrompt": "Przeprowad\u017a bm-setup dla Basic Memory NAS, sprawd\u017a projekt main, schematy i gotowo\u015b\u0107 workflow\u00f3w.",
+        "developerName": "Nova",
+        "displayName": "bm-setup",
+        "longDescription": "Konfiguruje mapowanie projektu i schematy na NAS oraz weryfikuje po\u0142\u0105czenie MCP.",
+        "shortDescription": "Zainicjalizuj projekt BM",
+        "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+      }
+    }
+  },
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "mcp",
+    "bm-setup"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "name": "bm-setup",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "1.0.0"
+}

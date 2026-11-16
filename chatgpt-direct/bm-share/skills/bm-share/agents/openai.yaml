@@ -1,0 +1,7 @@
+interface:
+  display_name: "bm-share"
+  short_description: "Udostępnij notatkę"
+  default_prompt: "Udostępnij wybraną notatkę Basic Memory w wskazanym przeze mnie projekcie. Najpierw pokaż źródło i cel."
+policy:
+  allow_implicit_invocation: false
+  products: [CHAT]

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "email": "novasilentcore@gmail.com",
+    "name": "Nova"
+  },
+  "description": "Save one user-requested fact, reminder, or short note verbatim to an explicit Basic Memory project when invoked.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "capabilities": [],
+        "category": "Productivity",
+        "defaultPrompt": "Zapisz w Basic Memory t\u0119 informacj\u0119, zachowuj\u0105c moje brzmienie. Projekt main.",
+        "developerName": "Nova",
+        "displayName": "bm-remember",
+        "longDescription": "Zapisuje jedn\u0105 konkretn\u0105 informacj\u0119, notatk\u0119 lub ustalenie na NAS, bez zb\u0119dnej struktury.",
+        "shortDescription": "Zapisz kr\u00f3tk\u0105 notatk\u0119",
+        "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+      }
+    }
+  },
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "mcp",
+    "bm-remember"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "name": "bm-remember",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "1.0.0"
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "email": "novasilentcore@gmail.com",
+    "name": "Nova"
+  },
+  "description": "Run a read-only diagnostic of Basic Memory MCP projects, schema health, notes and ChatGPT integration status.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "capabilities": [],
+        "category": "Productivity",
+        "defaultPrompt": "Sprawd\u017a stan integracji Basic Memory NAS: MCP, projekt main, schematy, checkpointy, zadania i ostrze\u017cenia.",
+        "developerName": "Nova",
+        "displayName": "bm-status",
+        "longDescription": "Kontroluje po\u0142\u0105czenie, projekty, schematy, zadania i checkpointy Basic Memory.",
+        "shortDescription": "Sprawd\u017a stan pami\u0119ci",
+        "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+      }
+    }
+  },
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "mcp",
+    "bm-status"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "name": "bm-status",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "1.0.0"
+}

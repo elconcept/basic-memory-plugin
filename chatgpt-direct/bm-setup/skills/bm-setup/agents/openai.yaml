@@ -1,0 +1,7 @@
+interface:
+  display_name: "bm-setup"
+  short_description: "Zainicjalizuj projekt BM"
+  default_prompt: "Przeprowadź bm-setup dla Basic Memory NAS, sprawdź projekt main, schematy i gotowość workflowów."
+policy:
+  allow_implicit_invocation: false
+  products: [CHAT]
