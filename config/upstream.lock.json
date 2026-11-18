@@ -3,5 +3,5 @@
   "integration_status": "snapshot-requires-generated-artifact-validation-before-commit",
   "snapshot_digest": "871263c0d48caa3d5e275240053c6317c8f3c11d503526d07093f893db3edf44",
   "source_repo": "basicmachines-co/basic-memory",
-  "upstream_sha": "4519c23074c49bdb1c15d1c66545a6f782f44d64"
+  "upstream_sha": "b4b2c2266975c09bb5deb15b1f034f30665e9290"
 }
