@@ -16,6 +16,19 @@ This ChatGPT skill adapts the Basic Memory workflows maintained in `elconcept/ba
 3. Scope every note operation to an explicit project. When several projects exist, use the user's selected project or ask which one should be read or written. Never silently switch to a default or broaden searches across unrelated projects.
 4. If the existing context specifies the exact project unambiguously, reuse it. If there is no exact target for a destructive or sharing action, obtain clarification.
 
+## Placement and note types (all workflows)
+
+Unless the user names another place, write into project `main` with these folders and frontmatter types (the same mapping Claude Code reads from `.claude/settings.json` of the `legal` repository):
+
+| Content | Folder | `type` |
+|---|---|---|
+| Session checkpoint / handoff | `legal/sessions` (legal scope) or `sessions` | `session` |
+| Decision | `legal/decyzje` (legal scope) or `decisions` | `decision`, with at least one `- [decision] ...` observation |
+| Task or deadline | `legal/zadania` (legal scope) or `tasks` | `task`, with `status` |
+| Short note | `legal/bm-remember` (legal scope) or `bm-remember` | `note` |
+
+Never create `checkpoints/` or `sesje/` folders and never use `type: checkpoint`. Refer to files of the GitHub repository `elconcept/legal` as plain Markdown links or a `source_path` frontmatter field, not as `[[wiki-links]]`: those are reserved for notes that exist in Basic Memory.
+
 ## Read and recall (bm-orient)
 
 For a request to resume or find previous work, use the server's actual search/list/read tools, commonly `bm_search`, `bm_list` and `bm_read`. Resolve the exact note or checkpoint and cite its permanent link/identifier where present. Distinguish observed source content from interpretation. Do not claim a note exists without a tool result. Avoid retrieving entire unrelated projects.

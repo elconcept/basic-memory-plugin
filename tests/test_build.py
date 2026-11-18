@@ -200,6 +200,31 @@ class SessionStartHookTests(unittest.TestCase):
             self.assertIn("`cp/`", text)
             self.assertIn("decisions/ for decisions", text)
 
+    def _configured(self, root: Path) -> Path:
+        proj = root / "repo"
+        (proj / ".claude").mkdir(parents=True)
+        (proj / ".claude/settings.json").write_text(json.dumps(
+            {"basicMemory": {"primaryProject": "work", "captureFolder": "work/sessions", "recallTimeframe": "5d"}}))
+        return proj
+
+    def test_startup_requires_orientation(self):
+        with tempfile.TemporaryDirectory() as d:
+            proj = self._configured(Path(d))
+            text = self.run_hook(proj, Path(d), {"cwd": str(proj), "source": "startup"})
+            self.assertIn("Orient first (required)", text)
+            self.assertIn('note_types=["session"]', text)
+            self.assertIn('since="5d"', text)
+            self.assertIn("type: session", text)
+            self.assertNotIn("Checkpoint now", text)
+
+    def test_compact_requests_checkpoint_instead_of_precompact(self):
+        with tempfile.TemporaryDirectory() as d:
+            proj = self._configured(Path(d))
+            text = self.run_hook(proj, Path(d), {"cwd": str(proj), "source": "compact"})
+            self.assertIn("Checkpoint now", text)
+            self.assertIn("bm-checkpoint", text)
+            self.assertIn("`work/sessions/`", text)
+
     def test_garbage_input_never_breaks_session(self):
         with tempfile.TemporaryDirectory() as d:
             r = subprocess.run([sys.executable, str(self.HOOK)], input="not json", capture_output=True,

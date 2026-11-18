@@ -1,7 +1,7 @@
 # Basic Memory (NAS): ChatGPT.com
 This is the **ChatGPT.com cloud plugin source**, distinct from `openai/` (Codex) and `claude/`.
 
-- Installed package identity: `basic-memory-nas`; version: `2.1.0`.
+- Installed package identity: `basic-memory-nas`; version: `2.1.1`.
 - Remote MCP: `https://bm.xlap.pl/mcp` with OAuth. No local MCP, hooks or credentials are bundled.
 - The single ChatGPT router skill covers orient, remember, decide, checkpoint, share, status, setup and writing.
 - `.github/workflows/publish-chatgpt.yml` packages the `chatgpt/` source and publishes immutable GitHub Release archives after relevant commits. **This is not an authenticated publication to ChatGPT.com.**
