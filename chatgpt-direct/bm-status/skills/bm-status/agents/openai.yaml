@@ -1,7 +1,9 @@
 interface:
-  display_name: "bm-status"
-  short_description: "Sprawdź stan pamięci"
-  default_prompt: "Sprawdź stan integracji Basic Memory NAS: MCP, projekt main, schematy, checkpointy, zadania i ostrzeżenia."
+  display_name: bm-status
+  short_description: Read-only diagnostics of the connected Basic Memory app, projects,
+    notes, schemas and plugin status.
+  default_prompt: Invoke bm-status using the existing Basic Memory app.
 policy:
   allow_implicit_invocation: false
-  products: [CHAT]
+  products:
+  - CHAT

@@ -1,0 +1,30 @@
+{
+  "apps": "./.app.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": "Udost\u0119pnij wybran\u0105 notatk\u0119 Basic Memory w wskazanym przeze mnie projekcie. Najpierw poka\u017c \u017ar\u00f3d\u0142o i cel.",
+    "developerName": "Nova",
+    "displayName": "bm-share",
+    "longDescription": "Kopiuje zatwierdzon\u0105 notatk\u0119 do innego projektu pami\u0119ci z zachowaniem \u017ar\u00f3d\u0142a.",
+    "shortDescription": "Udost\u0119pnij notatk\u0119",
+    "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+  },
+  "name": "bm-share",
+  "version": "1.1.0",
+  "description": "Deliberately copy an existing Basic Memory note to a user-approved team project with clear attribution.",
+  "author": {
+    "name": "Nova",
+    "email": "novasilentcore@gmail.com"
+  },
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "bm",
+    "bm-share"
+  ],
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "license": "AGPL-3.0-or-later",
+  "skills": "./skills"
+}

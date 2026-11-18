@@ -1,7 +1,9 @@
 interface:
-  display_name: "bm-checkpoint"
-  short_description: "Zapisz punkt wznowienia"
-  default_prompt: "Zrób checkpoint tej pracy w Basic Memory: cel, wykonane czynności, wyniki, pliki, blokady, następny krok."
+  display_name: bm-checkpoint
+  short_description: Create a deliberate resumable Basic Memory checkpoint with verified
+    state, blockers, and next action.
+  default_prompt: Invoke bm-checkpoint using the existing Basic Memory app.
 policy:
   allow_implicit_invocation: false
-  products: [CHAT]
+  products:
+  - CHAT

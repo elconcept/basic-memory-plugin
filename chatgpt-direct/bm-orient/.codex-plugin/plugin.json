@@ -1,0 +1,30 @@
+{
+  "apps": "./.app.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-orient w istniej\u0105cej aplikacji Basic Memory.",
+    "developerName": "Nova",
+    "displayName": "bm-orient",
+    "longDescription": "Odtwarza kontekst pracy ze wskazanego projektu Basic Memory.",
+    "shortDescription": "Wzn\u00f3w prac\u0119 z pami\u0119ci",
+    "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+  },
+  "name": "bm-orient",
+  "version": "1.0.0",
+  "description": "Restore relevant Basic Memory context, active tasks, decisions and latest checkpoints on demand.",
+  "author": {
+    "name": "Nova",
+    "email": "novasilentcore@gmail.com"
+  },
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "bm",
+    "bm-orient"
+  ],
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "license": "AGPL-3.0-or-later",
+  "skills": "./skills"
+}

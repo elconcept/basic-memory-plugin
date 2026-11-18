@@ -1,7 +1,9 @@
 interface:
-  display_name: "bm-orient"
-  short_description: "Wznów pracę z pamięci"
-  default_prompt: "Odtwórz kontekst z Basic Memory. Odczytaj ostatnie decyzje, zadania i checkpointy w projekcie main, podaj źródła."
+  display_name: bm-orient
+  short_description: Restore relevant Basic Memory context, active tasks, decisions
+    and latest checkpoints at the start or resumpti
+  default_prompt: Invoke bm-orient using the existing Basic Memory app.
 policy:
   allow_implicit_invocation: false
-  products: [CHAT]
+  products:
+  - CHAT

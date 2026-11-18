@@ -1,0 +1,30 @@
+{
+  "apps": "./.app.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-remember w istniej\u0105cej aplikacji Basic Memory.",
+    "developerName": "Nova",
+    "displayName": "bm-remember",
+    "longDescription": "Zapisuje kr\u00f3tki fakt lub ustalenie w wybranym projekcie.",
+    "shortDescription": "Zapisz kr\u00f3tk\u0105 notatk\u0119",
+    "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+  },
+  "name": "bm-remember",
+  "version": "1.0.0",
+  "description": "Store one specific user-provided fact, instruction, observation or note in Basic Memory.",
+  "author": {
+    "name": "Nova",
+    "email": "novasilentcore@gmail.com"
+  },
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "bm",
+    "bm-remember"
+  ],
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "license": "AGPL-3.0-or-later",
+  "skills": "./skills"
+}

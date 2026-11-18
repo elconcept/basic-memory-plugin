@@ -1,0 +1,30 @@
+{
+  "apps": "./.app.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-status w istniej\u0105cej aplikacji Basic Memory.",
+    "developerName": "Nova",
+    "displayName": "bm-status",
+    "longDescription": "Diagnostyka stanu integracji i schemat\u00f3w bez zapis\u00f3w.",
+    "shortDescription": "Sprawd\u017a stan pami\u0119ci",
+    "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+  },
+  "name": "bm-status",
+  "version": "1.0.0",
+  "description": "Run a read-only diagnostic of Basic Memory projects, schemas and connection status.",
+  "author": {
+    "name": "Nova",
+    "email": "novasilentcore@gmail.com"
+  },
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "bm",
+    "bm-status"
+  ],
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "license": "AGPL-3.0-or-later",
+  "skills": "./skills"
+}

@@ -1,7 +1,9 @@
 interface:
-  display_name: "bm-remember"
-  short_description: "Zapisz krótką notatkę"
-  default_prompt: "Zapisz w Basic Memory tę informację, zachowując moje brzmienie. Projekt main."
+  display_name: bm-remember
+  short_description: Store a specific user-provided short fact, instruction, observation
+    or note into the selected Basic Memory pro
+  default_prompt: Invoke bm-remember using the existing Basic Memory app.
 policy:
   allow_implicit_invocation: false
-  products: [CHAT]
+  products:
+  - CHAT

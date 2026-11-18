@@ -1,22 +1,24 @@
-# Basic Memory (NAS): eight direct ChatGPT plugins
+# Direct Basic Memory workflows for ChatGPT
 
-This directory contains **eight independently addressable ChatGPT plugins**. Each has one task-specific skill, a `plugin.json`, an OAuth-enabled `mcp.json`, and agent presentation metadata. `bm-setup` also bundles the Session, Decision and Task schema source notes.
+This directory defines eight **independently selectable, single-skill plugins** for ChatGPT. Each plugin reuses the one already connected Basic Memory application instead of creating another MCP connection.
 
-| Explicit @ invocation | Workflow |
+| Plugin mention | Purpose |
 | --- | --- |
-| `@bm-orient` | Read-only resume from notes, tasks, decisions and checkpoints |
-| `@bm-remember` | Save one short note |
-| `@bm-decide` | Record a typed decision |
-| `@bm-checkpoint` | Create a resumable handoff |
-| `@bm-share` | Copy a source note to a user-approved team project |
-| `@bm-writing` | Apply the writing standard to a selected note |
-| `@bm-status` | Read-only diagnostics |
-| `@bm-setup` | Configure and validate the NAS project and schemas |
+| `@bm-orient` | Resume work from Basic Memory |
+| `@bm-remember` | Save a short note |
+| `@bm-decide` | Record a decision |
+| `@bm-checkpoint` | Save a handoff checkpoint |
+| `@bm-share` | Copy a note into an explicitly approved team project |
+| `@bm-writing` | Edit or review a memory note |
+| `@bm-status` | Read-only status report |
+| `@bm-setup` | Configure and verify a Basic Memory project |
 
-The shared remote server is `https://bm.xlap.pl/mcp` (OAuth DCR). No local Basic Memory server, local CLI, or client hooks are bundled. All eight skills disable implicit invocation, so explicitly selecting the named plugin is the intended path. The original `chatgpt/` router remains a fallback until the newly published plugins have been tested in the ChatGPT composer.
+Every package contains one `skills/<name>/SKILL.md` plus `agents/openai.yaml`, `.app.json`, root `plugin.json`, and a legacy compatibility manifest. `bm-setup` also ships three schema references.
 
-### Build and cloud publication
+**Only one MCP connection:** Each `plugin.json` declares `extensions.com.openai.apps: './.app.json'`; `.app.json` references the existing `asdk_app_6afb2453a9748191a6865e06f09983f0` app. Do not add root `mcp.json`, legacy `.mcp.json`, `mcpServers`, local executors, or any second OAuth configuration to these packages.
 
-Run `python3 chatgpt-direct/package.py` to create one ZIP per plugin under `chatgpt-direct/dist/` (ignored/untracked output). Packages are independent; do not bundle all eight as one plugin.
+Build with `python3 chatgpt-direct/package.py`. Eight independent archives are created in `chatgpt-direct/dist/`. Source changes in GitHub **do not automatically update** ChatGPT's private plugin releases; publish updates to each existing plugin with Plugin Creator and the current release ID. Never create duplicate entries to update an existing plugin.
 
-The eight source packages were published to the owner's private ChatGPT plugins through Plugin Creator on 2026-11-16. **A GitHub push does not itself update their ChatGPT registrations.** Updating the cloud copies requires individually calling Plugin Creator `update_plugin` for each changed package, using its existing backend plugin ID and current release ID. Never use `create_plugin` for subsequent updates and never package OAuth credentials. Account UI installation, OAuth authorization and `@bm-*` composer recognition must be verified separately.
+These plugins were published as private app-backed ChatGPT plugin packages in November 2026. Account installation and `@` composer availability on chatgpt.com must be tested separately. The original Basic Memory app plugin currently retains its bundled skills as a fallback until web invocation of the eight individual plugins is confirmed.
+
+Repository: https://github.com/elconcept/basic-memory-plugin

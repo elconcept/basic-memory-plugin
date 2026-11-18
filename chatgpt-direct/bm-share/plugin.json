@@ -1,20 +1,21 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "author": {
-    "email": "novasilentcore@gmail.com",
-    "name": "Nova"
+    "name": "Nova",
+    "email": "novasilentcore@gmail.com"
   },
   "description": "Deliberately copy an existing Basic Memory note to a user-approved team project with clear attribution.",
   "extensions": {
     "com.openai": {
+      "apps": "./.app.json",
       "interface": {
         "capabilities": [],
         "category": "Productivity",
-        "defaultPrompt": "Udost\u0119pnij wybran\u0105 notatk\u0119 Basic Memory w wskazanym przeze mnie projekcie. Najpierw poka\u017c \u017ar\u00f3d\u0142o i cel.",
+        "defaultPrompt": "Udostępnij wybraną notatkę Basic Memory w wskazanym przeze mnie projekcie. Najpierw pokaż źródło i cel.",
         "developerName": "Nova",
         "displayName": "bm-share",
-        "longDescription": "Kopiuje zatwierdzon\u0105 notatk\u0119 do innego projektu pami\u0119ci z zachowaniem \u017ar\u00f3d\u0142a.",
-        "shortDescription": "Udost\u0119pnij notatk\u0119",
+        "longDescription": "Kopiuje zatwierdzoną notatkę do innego projektu pamięci z zachowaniem źródła.",
+        "shortDescription": "Udostępnij notatkę",
         "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
       }
     }
@@ -23,11 +24,11 @@
   "keywords": [
     "basic-memory",
     "nas",
-    "mcp",
+    "bm",
     "bm-share"
   ],
   "license": "AGPL-3.0-or-later",
   "name": "bm-share",
   "repository": "https://github.com/elconcept/basic-memory-plugin",
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

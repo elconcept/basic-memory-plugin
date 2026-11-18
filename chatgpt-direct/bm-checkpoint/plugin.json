@@ -4,16 +4,17 @@
     "email": "novasilentcore@gmail.com",
     "name": "Nova"
   },
-  "description": "Create a durable, resumable checkpoint of current work in Basic Memory with verified progress, blockers and next action.",
+  "description": "Create a durable handoff checkpoint of verified work state, blockers and next action.",
   "extensions": {
     "com.openai": {
+      "apps": "./.app.json",
       "interface": {
         "capabilities": [],
         "category": "Productivity",
-        "defaultPrompt": "Zr\u00f3b checkpoint tej pracy w Basic Memory: cel, wykonane czynno\u015bci, wyniki, pliki, blokady, nast\u0119pny krok.",
+        "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-checkpoint w istniej\u0105cej aplikacji Basic Memory.",
         "developerName": "Nova",
         "displayName": "bm-checkpoint",
-        "longDescription": "Zapisuje stan zadania do kontynuacji w kolejnej sesji ChatGPT, Claude lub Codex.",
+        "longDescription": "Utrwala stan pracy do odtworzenia w kolejnej rozmowie.",
         "shortDescription": "Zapisz punkt wznowienia",
         "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
       }
@@ -23,7 +24,7 @@
   "keywords": [
     "basic-memory",
     "nas",
-    "mcp",
+    "bm",
     "bm-checkpoint"
   ],
   "license": "AGPL-3.0-or-later",

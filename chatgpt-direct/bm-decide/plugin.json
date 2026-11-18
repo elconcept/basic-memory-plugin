@@ -4,16 +4,17 @@
     "email": "novasilentcore@gmail.com",
     "name": "Nova"
   },
-  "description": "Record one durable choice with rationale, alternatives, effects and source references as a typed Basic Memory decision.",
+  "description": "Record one durable decision, rationale, alternatives and consequences in Basic Memory.",
   "extensions": {
     "com.openai": {
+      "apps": "./.app.json",
       "interface": {
         "capabilities": [],
         "category": "Productivity",
-        "defaultPrompt": "Utrwal aktualn\u0105 decyzj\u0119 w Basic Memory, razem z uzasadnieniem, alternatywami i skutkami. Projekt main.",
+        "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-decide w istniej\u0105cej aplikacji Basic Memory.",
         "developerName": "Nova",
         "displayName": "bm-decide",
-        "longDescription": "Tworzy notatk\u0119 decision z tre\u015bci\u0105, przes\u0142ankami, alternatywami i konsekwencjami.",
+        "longDescription": "Zapisuje decyzj\u0119 z uzasadnieniem i alternatywami.",
         "shortDescription": "Utrwal decyzj\u0119",
         "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
       }
@@ -23,7 +24,7 @@
   "keywords": [
     "basic-memory",
     "nas",
-    "mcp",
+    "bm",
     "bm-decide"
   ],
   "license": "AGPL-3.0-or-later",

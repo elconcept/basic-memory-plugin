@@ -1,0 +1,30 @@
+{
+  "apps": "./.app.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-writing w istniej\u0105cej aplikacji Basic Memory.",
+    "developerName": "Nova",
+    "displayName": "bm-writing",
+    "longDescription": "Redaguje istniej\u0105c\u0105 notatk\u0119 wed\u0142ug standardu Basic Memory.",
+    "shortDescription": "Standard notatek BM",
+    "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+  },
+  "name": "bm-writing",
+  "version": "1.0.0",
+  "description": "Review or revise a selected Basic Memory note using the structured writing standard.",
+  "author": {
+    "name": "Nova",
+    "email": "novasilentcore@gmail.com"
+  },
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "bm",
+    "bm-writing"
+  ],
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "license": "AGPL-3.0-or-later",
+  "skills": "./skills"
+}

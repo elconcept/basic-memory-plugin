@@ -4,16 +4,17 @@
     "email": "novasilentcore@gmail.com",
     "name": "Nova"
   },
-  "description": "Run a read-only diagnostic of Basic Memory MCP projects, schema health, notes and ChatGPT integration status.",
+  "description": "Run a read-only diagnostic of Basic Memory projects, schemas and connection status.",
   "extensions": {
     "com.openai": {
+      "apps": "./.app.json",
       "interface": {
         "capabilities": [],
         "category": "Productivity",
-        "defaultPrompt": "Sprawd\u017a stan integracji Basic Memory NAS: MCP, projekt main, schematy, checkpointy, zadania i ostrze\u017cenia.",
+        "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-status w istniej\u0105cej aplikacji Basic Memory.",
         "developerName": "Nova",
         "displayName": "bm-status",
-        "longDescription": "Kontroluje po\u0142\u0105czenie, projekty, schematy, zadania i checkpointy Basic Memory.",
+        "longDescription": "Diagnostyka stanu integracji i schemat\u00f3w bez zapis\u00f3w.",
         "shortDescription": "Sprawd\u017a stan pami\u0119ci",
         "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
       }
@@ -23,7 +24,7 @@
   "keywords": [
     "basic-memory",
     "nas",
-    "mcp",
+    "bm",
     "bm-status"
   ],
   "license": "AGPL-3.0-or-later",

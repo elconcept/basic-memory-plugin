@@ -1,32 +1,34 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "bm-orient",
-  "version": "1.0.1",
-  "description": "Restore an existing project or topic from actual Basic Memory notes, active tasks, decisions and checkpoints when explicitly invoked.",
   "author": {
-    "name": "elconcept"
+    "email": "novasilentcore@gmail.com",
+    "name": "Nova"
   },
-  "homepage": "https://github.com/elconcept/basic-memory-plugin",
-  "repository": "https://github.com/elconcept/basic-memory-plugin",
-  "license": "AGPL-3.0-or-later",
-  "keywords": [
-    "basic-memory",
-    "nas",
-    "mcp",
-    "bm-orient"
-  ],
+  "description": "Restore relevant Basic Memory context, active tasks, decisions and latest checkpoints on demand.",
   "extensions": {
     "com.openai": {
+      "apps": "./.app.json",
       "interface": {
-        "displayName": "bm-orient",
-        "shortDescription": "Wznów pracę z pamięci",
-        "longDescription": "Odtwarza kontekst z NAS: zadania, decyzje, checkpointy i powiązane notatki. Wyłącznie odczyt.",
-        "developerName": "elconcept",
-        "category": "Productivity",
         "capabilities": [],
-        "defaultPrompt": "Odtwórz kontekst z Basic Memory. Odczytaj ostatnie decyzje, zadania i checkpointy w projekcie main, podaj źródła.",
+        "category": "Productivity",
+        "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-orient w istniej\u0105cej aplikacji Basic Memory.",
+        "developerName": "Nova",
+        "displayName": "bm-orient",
+        "longDescription": "Odtwarza kontekst pracy ze wskazanego projektu Basic Memory.",
+        "shortDescription": "Wzn\u00f3w prac\u0119 z pami\u0119ci",
         "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
       }
     }
-  }
+  },
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "bm",
+    "bm-orient"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "name": "bm-orient",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "version": "1.0.0"
 }

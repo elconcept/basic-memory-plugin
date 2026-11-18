@@ -4,16 +4,17 @@
     "email": "novasilentcore@gmail.com",
     "name": "Nova"
   },
-  "description": "Save one user-requested fact, reminder, or short note verbatim to an explicit Basic Memory project when invoked.",
+  "description": "Store one specific user-provided fact, instruction, observation or note in Basic Memory.",
   "extensions": {
     "com.openai": {
+      "apps": "./.app.json",
       "interface": {
         "capabilities": [],
         "category": "Productivity",
-        "defaultPrompt": "Zapisz w Basic Memory t\u0119 informacj\u0119, zachowuj\u0105c moje brzmienie. Projekt main.",
+        "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-remember w istniej\u0105cej aplikacji Basic Memory.",
         "developerName": "Nova",
         "displayName": "bm-remember",
-        "longDescription": "Zapisuje jedn\u0105 konkretn\u0105 informacj\u0119, notatk\u0119 lub ustalenie na NAS, bez zb\u0119dnej struktury.",
+        "longDescription": "Zapisuje kr\u00f3tki fakt lub ustalenie w wybranym projekcie.",
         "shortDescription": "Zapisz kr\u00f3tk\u0105 notatk\u0119",
         "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
       }
@@ -23,7 +24,7 @@
   "keywords": [
     "basic-memory",
     "nas",
-    "mcp",
+    "bm",
     "bm-remember"
   ],
   "license": "AGPL-3.0-or-later",

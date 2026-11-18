@@ -1,0 +1,30 @@
+{
+  "apps": "./.app.json",
+  "interface": {
+    "capabilities": [],
+    "category": "Productivity",
+    "defaultPrompt": "Uruchom wy\u0142\u0105cznie bm-checkpoint w istniej\u0105cej aplikacji Basic Memory.",
+    "developerName": "Nova",
+    "displayName": "bm-checkpoint",
+    "longDescription": "Utrwala stan pracy do odtworzenia w kolejnej rozmowie.",
+    "shortDescription": "Zapisz punkt wznowienia",
+    "websiteURL": "https://github.com/elconcept/basic-memory-plugin"
+  },
+  "name": "bm-checkpoint",
+  "version": "1.0.0",
+  "description": "Create a durable handoff checkpoint of verified work state, blockers and next action.",
+  "author": {
+    "name": "Nova",
+    "email": "novasilentcore@gmail.com"
+  },
+  "keywords": [
+    "basic-memory",
+    "nas",
+    "bm",
+    "bm-checkpoint"
+  ],
+  "homepage": "https://github.com/elconcept/basic-memory-plugin",
+  "repository": "https://github.com/elconcept/basic-memory-plugin",
+  "license": "AGPL-3.0-or-later",
+  "skills": "./skills"
+}
