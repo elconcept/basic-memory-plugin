@@ -1,7 +1,7 @@
 {
   "file_count": 86,
   "integration_status": "snapshot-requires-generated-artifact-validation-before-commit",
-  "snapshot_digest": "8e42f9cde7796ea0d6a176fa059a2e789ab02e3fe8329a603be9d1706f109b7a",
+  "snapshot_digest": "8d029c3de92d98aa37d3a5620e4531270499e8e423d0335cc582b0898d7df6be",
   "source_repo": "basicmachines-co/basic-memory",
-  "upstream_sha": "8d002c93fd5d68fbb9690c6de9b90792040dce1c"
+  "upstream_sha": "9d13a666fc78ee9ce366de06bb376161e32e28ba"
 }
